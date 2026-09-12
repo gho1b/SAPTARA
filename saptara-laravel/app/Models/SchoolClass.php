@@ -51,4 +51,9 @@ class SchoolClass extends Model
     {
         return $this->hasMany(Student::class, 'class_id');
     }
+
+    public function classMissions(): HasMany
+    {
+        return $this->hasMany(ClassMission::class, 'class_id');
+    }
 }

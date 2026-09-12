@@ -122,7 +122,8 @@ export function ClassHabitsManager({ classId, classCode }: ClassHabitsManagerPro
   const customHabits = habits?.filter((h) => h.is_custom || h.isCustom) ?? [];
 
   return (
-    <Card className="border-sky-100 shadow-sm overflow-hidden">
+    <>
+      <Card className="border-sky-100 shadow-sm overflow-hidden">
       <CardHeader className="pb-3 border-b border-slate-100 bg-gradient-to-r from-sky-50/50 to-white">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -299,9 +300,10 @@ export function ClassHabitsManager({ classId, classCode }: ClassHabitsManagerPro
           </>
         )}
       </CardContent>
+    </Card>
 
-      {/* Modal Dialog Editor Kebiasaan (Tambah / Edit) */}
-      <Dialog
+    {/* Modal Dialog Editor Kebiasaan (Tambah / Edit) */}
+    <Dialog
         open={modalOpen}
         isOpen={modalOpen}
         onClose={() => {
@@ -399,6 +401,6 @@ export function ClassHabitsManager({ classId, classCode }: ClassHabitsManagerPro
           </div>
         </form>
       </Dialog>
-    </Card>
+    </>
   );
 }

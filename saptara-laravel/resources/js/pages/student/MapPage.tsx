@@ -4,6 +4,7 @@ import { useStudentDashboard } from "../../hooks/use-students";
 import { useTodayMissions, useToggleHabit } from "../../hooks/use-habits";
 import { OceanMap } from "../../components/OceanMap";
 import { DailyQuests } from "../../components/DailyQuests";
+import { ClassMissionCard } from "../../components/ClassMissionCard";
 import { Mascot } from "../../components/Mascot";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
@@ -77,6 +78,11 @@ export function MapPage() {
           </div>
         </div>
       </div>
+
+      {/* Class Mission: Tantangan Kolektif Kelas (Phase 19) */}
+      {studentInfo?.classId && (
+        <ClassMissionCard classId={studentInfo.classId} studentId={studentId} />
+      )}
 
       {/* Ocean Map of 7 Islands */}
       <div>

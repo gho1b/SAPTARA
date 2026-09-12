@@ -1,0 +1,26 @@
+{
+  "name": "SAPTARA — 7 Kebiasaan Anak Indonesia Hebat",
+  "short_name": "SAPTARA",
+  "description": "Aplikasi Gamifikasi Pendidikan Karakter 7 Kebiasaan Anak Indonesia Hebat",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0284c7",
+  "background_color": "#f8fafc",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

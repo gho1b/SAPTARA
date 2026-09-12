@@ -10,6 +10,7 @@ use App\Http\Controllers\LogbookController;
 use App\Http\Controllers\RewardController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\QuestController;
+use App\Http\Controllers\ClassMissionController;
 use Illuminate\Support\Facades\Route;
 
 // ── Health check ──────────────────────────────────────────────
@@ -62,6 +63,9 @@ Route::middleware(['auth:sanctum', 'auth.teacher'])->group(function () {
     Route::put('/habits/{id}',            [HabitController::class, 'update']);
     Route::delete('/habits/{id}',         [HabitController::class, 'destroy']);
 
+    // Class Missions (Phase 19)
+    Route::post('/classes/{id}/missions', [ClassMissionController::class, 'store']);
+
     // Rewards
     Route::post('/rewards/badges',   [RewardController::class, 'awardBadge']);
     Route::post('/rewards/message',  [RewardController::class, 'sendMessage']);
@@ -73,6 +77,7 @@ Route::middleware(['auth.student'])->group(function () {
     Route::post('/habits/toggle',                        [HabitController::class, 'toggle']);
     Route::post('/rewards/accessories/purchase',         [RewardController::class, 'purchase']);
     Route::post('/students/{id}/quests/{questKey}/claim', [QuestController::class, 'claim']);
+    Route::post('/missions/{id}/claim',                  [ClassMissionController::class, 'claim']);
 });
 
 // ── Parent routes (JWT role=parent) ──────────────────────────
@@ -87,6 +92,7 @@ Route::middleware(['auth.teacher.or.parent'])->group(function () {
 });
 
 // ── Public routes ─────────────────────────────────────────────
+Route::get('/classes/{id}/missions',                 [ClassMissionController::class, 'index']);
 Route::get('/habits',                                [HabitController::class, 'index']);
 Route::get('/habits/missions/{studentId}',           [HabitController::class, 'todayMissions']);
 Route::get('/students/{id}/quests',                  [QuestController::class, 'index']);

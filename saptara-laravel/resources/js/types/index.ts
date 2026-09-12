@@ -156,6 +156,35 @@ export interface DailyQuestsResponse {
   quests: DailyQuest[];
 }
 
+export interface ClassMission {
+  id: number;
+  class_id: number;
+  title: string;
+  description: string;
+  type: "total_habits" | "photo_logbooks";
+  target_count: number;
+  current_progress: number;
+  percentage: number;
+  completed: boolean;
+  claimed: boolean;
+  reward_xp_each: number;
+  reward_coins_each: number;
+  start_date: string;
+  end_date: string;
+  days_left: number;
+}
+
+export interface CreateClassMissionPayload {
+  title: string;
+  description?: string;
+  type: "total_habits" | "photo_logbooks";
+  target_count: number;
+  reward_xp_each?: number;
+  reward_coins_each?: number;
+  start_date?: string;
+  end_date: string;
+}
+
 export interface MilestoneReward {
   days: number;
   bonus_xp: number;

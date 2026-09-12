@@ -20,17 +20,19 @@ import {
   Download,
   Loader2,
   Sparkles,
+  Ship,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { downloadAuthorizedFile } from "../../lib/download";
 import { ClassHabitsManager } from "../../components/ClassHabitsManager";
+import { ClassMissionManager } from "../../components/ClassMissionManager";
 
 const AVATARS = ["🧒", "👧", "👦", "🧒🏻", "👧🏻", "👦🏻", "🧑‍🦱", "👩‍🦰", "🧑‍🎓"];
 
 export function CrewPage() {
   const { data: classes } = useClasses();
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<"students" | "habits">("students");
+  const [activeTab, setActiveTab] = useState<"students" | "habits" | "missions">("students");
 
   useEffect(() => {
     if (classes && classes.length > 0 && !selectedClassId) {
@@ -326,8 +328,8 @@ export function CrewPage() {
         </Card>
       )}
 
-      {/* Tab Switcher: Awak Siswa vs Kebiasaan Kelas */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+      {/* Tab Switcher: Awak Siswa vs Kebiasaan Kelas vs Tantangan Kelas */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
         <button
           type="button"
           onClick={() => setActiveTab("students")}
@@ -352,9 +354,26 @@ export function CrewPage() {
           <Sparkles className="h-4 w-4" />
           <span>Kebiasaan & Misi Kelas</span>
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("missions")}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+            activeTab === "missions"
+              ? "bg-sky-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          }`}
+        >
+          <Ship className="h-4 w-4" />
+          <span>Tantangan Kolektif (Class Mission)</span>
+        </button>
       </div>
 
-      {activeTab === "habits" ? (
+      {activeTab === "missions" ? (
+        <ClassMissionManager
+          classId={classId}
+          classCode={currentClass?.classCode || currentClass?.class_code}
+        />
+      ) : activeTab === "habits" ? (
         <ClassHabitsManager
           classId={classId}
           classCode={currentClass?.classCode || currentClass?.class_code}

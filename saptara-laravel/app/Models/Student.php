@@ -100,4 +100,9 @@ class Student extends Model
     {
         return $this->hasMany(StudentDailyQuestClaim::class);
     }
+
+    public function classMissionClaims(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ClassMissionClaim::class, 'student_id');
+    }
 }

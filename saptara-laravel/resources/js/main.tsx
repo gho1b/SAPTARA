@@ -11,3 +11,17 @@ if (rootElement) {
     </React.StrictMode>
   );
 }
+
+// ── PWA Service Worker Registration ──
+if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((reg) => {
+        console.log("SAPTARA PWA Service Worker terdaftar:", reg.scope);
+      })
+      .catch((err) => {
+        console.warn("Gagal mendaftarkan Service Worker:", err);
+      });
+  });
+}
