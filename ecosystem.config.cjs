@@ -18,7 +18,7 @@ module.exports = {
       instances: 1,
       autorestart: true,
       watch: false,
-      max_memory_restart: "256M",
+      max_memory_restart: "512M",
 
       // Logging
       log_date_format: "YYYY-MM-DD HH:mm:ss Z",
@@ -44,7 +44,7 @@ module.exports = {
       instances: 1,
       autorestart: true,
       watch: false,
-      max_memory_restart: "256M",
+      max_memory_restart: "512M",
 
       // Logging
       log_date_format: "YYYY-MM-DD HH:mm:ss Z",

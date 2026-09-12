@@ -6,7 +6,7 @@
  * - Student requests: use Authorization Bearer token (JWT stored in localStorage)
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3000";
+const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 /**
  * Get the stored student JWT token from localStorage
@@ -111,6 +111,89 @@ export async function apiStudentFetch<T>(
   };
 
   // Don't set Content-Type for FormData
+  if (!(options.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.text();
+    let message: string;
+    try {
+      const parsed = JSON.parse(errorBody);
+      message = parsed.error || parsed.message || errorBody;
+    } catch {
+      message = errorBody;
+    }
+    throw new Error(message);
+  }
+
+  return res.json();
+}
+
+// ── Parent Auth Helpers ──
+
+export function getParentToken(): string | null {
+  return localStorage.getItem("saptara_parent_token");
+}
+
+export function setParentToken(token: string): void {
+  localStorage.setItem("saptara_parent_token", token);
+}
+
+export function removeParentToken(): void {
+  localStorage.removeItem("saptara_parent_token");
+}
+
+export function getStoredParentInfo(): {
+  studentId: number;
+  classId: number;
+  studentName: string;
+  studentAvatar: string;
+} | null {
+  const raw = localStorage.getItem("saptara_parent_info");
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function setParentInfo(info: {
+  studentId: number;
+  classId: number;
+  studentName: string;
+  studentAvatar: string;
+}): void {
+  localStorage.setItem("saptara_parent_info", JSON.stringify(info));
+}
+
+export function removeParentInfo(): void {
+  localStorage.removeItem("saptara_parent_info");
+}
+
+/**
+ * Fetch wrapper with parent JWT auth header
+ */
+export async function apiParentFetch<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = getParentToken();
+  if (!token) {
+    throw new Error("No parent token found — please login first");
+  }
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    ...(options.headers as Record<string, string>),
+  };
+
   if (!(options.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }

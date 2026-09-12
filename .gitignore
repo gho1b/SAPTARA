@@ -4,6 +4,11 @@ uploads/
 .env
 .env.production
 *.log
+*.zip
+*.tar
+*.db
+*.db-shm
+*.db-wal
 
 # Created by https://www.toptal.com/developers/gitignore/api/node,react
 # Edit at https://www.toptal.com/developers/gitignore?templates=node,react

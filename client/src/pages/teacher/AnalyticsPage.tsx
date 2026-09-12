@@ -4,6 +4,7 @@ import { useClasses, useClassStudents } from "../../hooks/use-classes";
 import { useStudentCompass, useStudentWeekly } from "../../hooks/use-students";
 import { useHabits } from "../../hooks/use-habits";
 import { useStudentLogbook } from "../../hooks/use-logbook";
+import { downloadWeeklyReport } from "../../lib/excel-export";
 
 // 7 Sapta habits metadata for compass display
 const HABIT_META = [
@@ -134,6 +135,7 @@ export function AnalyticsPage() {
           student={selectedStudent}
           studentId={selectedStudentId}
           habits={habits}
+          className={classes?.find(c => c.id === selectedClassId)?.shipName || classes?.find(c => c.id === selectedClassId)?.classCode || "Kelas 1"}
         />
       )}
 
@@ -150,12 +152,24 @@ interface StudentDetailProps {
   student: any;
   studentId: number;
   habits: any[] | undefined;
+  className: string;
 }
 
-function StudentDetail({ student, studentId, habits }: StudentDetailProps) {
+function StudentDetail({ student, studentId, habits, className }: StudentDetailProps) {
   const { data: compassRaw } = useStudentCompass(studentId);
   const { data: weeklyData } = useStudentWeekly(studentId);
   const { data: logEntries } = useStudentLogbook(studentId);
+
+  // ── Download Excel ──
+  const downloadExcel = async () => {
+    await downloadWeeklyReport({
+      student,
+      habits: habits || HABIT_META,
+      logEntries: logEntries || [],
+      className,
+      schoolName: "SDIT SAPTARA", // Or get from config if available
+    });
+  };
 
   // Ship info
   const getShipInfo = (xp: number) => {
@@ -208,6 +222,13 @@ function StudentDetail({ student, studentId, habits }: StudentDetailProps) {
           <h3 className="drilldown-name">{student.name}</h3>
           <p className="drilldown-ship">{ship.emoji} {ship.name} • Level {ship.level}</p>
         </div>
+        <button
+          className="btn-download-excel"
+          onClick={downloadExcel}
+          title="Unduh laporan logbook siswa dalam format Excel"
+        >
+          📥 Unduh Excel
+        </button>
       </div>
 
       {/* Student stats */}

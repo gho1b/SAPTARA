@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { authService } from "../services/auth.service";
 import { useSession, signIn, signUp, signOut } from "../lib/auth-client";
-import type { Teacher, StudentLoginResponse } from "../types";
-import { getStoredStudentInfo } from "../lib/api-client";
+import type { Teacher, StudentLoginResponse, ParentLoginResponse } from "../types";
+import { getStoredStudentInfo, getStoredParentInfo } from "../lib/api-client";
 
 // ════════════════════════════════════════════
 // Teacher Auth Hooks (Better Auth)
@@ -129,4 +129,47 @@ export function useStudentLogout() {
  */
 export function useStudentInfo() {
   return getStoredStudentInfo();
+}
+
+// ════════════════════════════════════════════
+// Parent Auth Hooks (JWT)
+// ════════════════════════════════════════════
+
+/**
+ * Hook: Parent login (nama anak + classCode → JWT with role "parent").
+ */
+export function useParentLogin() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    ParentLoginResponse,
+    Error,
+    { name: string; classCode: string }
+  >({
+    mutationFn: ({ name, classCode }) =>
+      authService.parentLogin(name, classCode),
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+    },
+  });
+}
+
+/**
+ * Hook: Parent logout (clears localStorage).
+ */
+export function useParentLogout() {
+  const queryClient = useQueryClient();
+  return {
+    logout: () => {
+      authService.parentLogout();
+      queryClient.clear();
+    },
+  };
+}
+
+/**
+ * Hook: Get current parent info from localStorage.
+ * Returns null if not logged in as parent.
+ */
+export function useParentInfo() {
+  return getStoredParentInfo();
 }

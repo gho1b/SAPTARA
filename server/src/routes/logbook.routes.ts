@@ -4,6 +4,7 @@ import path from "path";
 import { logbookService } from "../services/logbook.service.js";
 import { requireStudent } from "../middleware/student-auth.middleware.js";
 import { requireTeacher } from "../middleware/auth.middleware.js";
+import { requireTeacherOrParent, requireParent } from "../middleware/parent-auth.middleware.js";
 import type { AuthenticatedRequest } from "../types/index.js";
 
 const router = Router();
@@ -77,8 +78,8 @@ router.get("/student/:studentId", async (req, res, next) => {
   }
 });
 
-// GET /api/logbook/class/:classId — Get all entries in class (teacher feed)
-router.get("/class/:classId", requireTeacher, async (req: AuthenticatedRequest, res, next) => {
+// GET /api/logbook/class/:classId — Get all entries in class (teacher/parent feed)
+router.get("/class/:classId", requireTeacherOrParent, async (req: AuthenticatedRequest, res, next) => {
   try {
     const classId = parseInt(req.params.classId as string);
     const entries = await logbookService.getByClass(classId);
@@ -88,8 +89,8 @@ router.get("/class/:classId", requireTeacher, async (req: AuthenticatedRequest, 
   }
 });
 
-// GET /api/logbook/pending/:classId — Get pending entries only
-router.get("/pending/:classId", requireTeacher, async (req: AuthenticatedRequest, res, next) => {
+// GET /api/logbook/pending/:classId — Get pending entries only (teacher/parent)
+router.get("/pending/:classId", requireTeacherOrParent, async (req: AuthenticatedRequest, res, next) => {
   try {
     const classId = parseInt(req.params.classId as string);
     const entries = await logbookService.getPending(classId);
@@ -151,6 +152,24 @@ router.post("/batch-verify", requireTeacher, async (req: AuthenticatedRequest, r
       comment
     );
     res.json({ verified: results.length, entries: results });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/logbook/:id/parent-comment — Parent adds comment on a logbook entry
+router.post("/:id/parent-comment", requireParent, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const entryId = parseInt(req.params.id as string);
+    const { comment } = req.body;
+
+    if (!comment || typeof comment !== "string" || comment.trim().length === 0) {
+      res.status(400).json({ error: "Komentar tidak boleh kosong" });
+      return;
+    }
+
+    const entry = await logbookService.addParentComment(entryId, comment.trim());
+    res.json(entry);
   } catch (error) {
     next(error);
   }

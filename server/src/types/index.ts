@@ -41,7 +41,15 @@ export interface StudentPayload {
   role: "student";
 }
 
+export interface ParentPayload {
+  studentId: number;
+  classId: number;
+  studentName: string;
+  role: "parent";
+}
+
 export interface AuthenticatedRequest extends Request {
   teacher?: TeacherPayload;
   student?: StudentPayload;
+  parent?: ParentPayload;
 }

@@ -177,7 +177,7 @@ export function FeedPage() {
 
               {entry.photoUrl && (
                 <img
-                  src={`http://localhost:3000${entry.photoUrl}`}
+                  src={entry.photoUrl}
                   alt="Bukti misi"
                   className="feed-entry__photo"
                   loading="lazy"

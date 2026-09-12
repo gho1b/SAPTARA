@@ -24,5 +24,6 @@ export const auth = betterAuth({
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:8080",
+    "https://d7ad3476-f9f6-433e-8580-bfcd2ac5ba64.svc.dalang.io",
   ],
 });

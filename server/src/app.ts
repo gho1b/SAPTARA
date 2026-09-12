@@ -21,6 +21,9 @@ export function createApp() {
         "http://localhost:3000",  // Same origin
         "http://127.0.0.1:8080",
         "http://127.0.0.1:5173",
+        // Production: Dalang public domain (same origin via nginx, but just in case)
+        "https://d7ad3476-f9f6-433e-8580-bfcd2ac5ba64.svc.dalang.io",
+        ...(process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : []),
       ],
       credentials: true,
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

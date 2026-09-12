@@ -8,6 +8,7 @@ import {
 } from "../db/schema.js";
 import { eq, and, desc, sql, gte } from "drizzle-orm";
 import { getShipLevel } from "../types/index.js";
+import { getWIBDate, getWIBDateDaysAgo, getWIBDayIndex } from "../utils/timezone.js";
 
 export const studentService = {
   /**
@@ -98,7 +99,7 @@ export const studentService = {
     const studentData = await this.getById(studentId);
 
     // Get today's completions
-    const today = new Date().toISOString().split("T")[0];
+    const today = getWIBDate();
     const todayCompletions = await db
       .select({ habitId: habitCompletion.habitId })
       .from(habitCompletion)
@@ -128,10 +129,8 @@ export const studentService = {
     const result = [];
 
     for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split("T")[0];
-      const dayIndex = (date.getDay() + 6) % 7; // Mon=0, Sun=6
+      const dateStr = getWIBDateDaysAgo(i);
+      const dayIndex = getWIBDayIndex(i);
 
       const completions = await db
         .select({ count: sql<number>`count(*)` })
@@ -157,9 +156,7 @@ export const studentService = {
    * Get compass/radar chart data (habit scores as % over last 30 days).
    */
   async getCompassData(studentId: number) {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const sinceDate = thirtyDaysAgo.toISOString().split("T")[0];
+    const sinceDate = getWIBDateDaysAgo(30);
 
     const habits: Record<number, number> = {};
 

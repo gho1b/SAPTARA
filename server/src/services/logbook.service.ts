@@ -1,10 +1,12 @@
 import { db } from "../db/index.js";
-import { logbookEntry, student, habitCompletion } from "../db/schema.js";
+import { logbookEntry, student, habit, habitCompletion } from "../db/schema.js";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { getWIBDateTime } from "../utils/timezone.js";
 
 export const logbookService = {
   /**
    * Create a new logbook entry (student submits photo proof).
+   * Uses WIB (UTC+7) for date and time.
    */
   async create(
     studentId: number,
@@ -12,9 +14,7 @@ export const logbookService = {
     caption: string,
     photoUrl: string | null
   ) {
-    const now = new Date();
-    const today = now.toISOString().split("T")[0];
-    const time = now.toTimeString().slice(0, 5);
+    const { date: today, time } = getWIBDateTime();
 
     const [entry] = await db
       .insert(logbookEntry)
@@ -64,17 +64,39 @@ export const logbookService = {
 
   /**
    * Get logbook entries for a specific student.
+   * JOINs habit table so the frontend gets habit names/icons directly.
    */
   async getByStudent(studentId: number) {
     return db
-      .select()
+      .select({
+        id: logbookEntry.id,
+        studentId: logbookEntry.studentId,
+        habitId: logbookEntry.habitId,
+        date: logbookEntry.date,
+        time: logbookEntry.time,
+        photoUrl: logbookEntry.photoUrl,
+        caption: logbookEntry.caption,
+        status: logbookEntry.status,
+        reviewedByTeacherId: logbookEntry.reviewedByTeacherId,
+        teacherComment: logbookEntry.teacherComment,
+        teacherSticker: logbookEntry.teacherSticker,
+        parentComment: logbookEntry.parentComment,
+        xpEarned: logbookEntry.xpEarned,
+        createdAt: logbookEntry.createdAt,
+        updatedAt: logbookEntry.updatedAt,
+        // Joined fields
+        habitName: habit.name,
+        habitIcon: habit.icon,
+      })
       .from(logbookEntry)
+      .innerJoin(habit, eq(logbookEntry.habitId, habit.id))
       .where(eq(logbookEntry.studentId, studentId))
       .orderBy(desc(logbookEntry.createdAt));
   },
 
   /**
    * Get all logbook entries for a class (teacher feed).
+   * JOINs student + habit tables so the frontend gets names/icons directly.
    */
   async getByClass(classId: number) {
     const students = await db
@@ -85,11 +107,36 @@ export const logbookService = {
     const studentIds = students.map((s) => s.id);
     if (studentIds.length === 0) return [];
 
-    return db
-      .select()
+    const entries = await db
+      .select({
+        id: logbookEntry.id,
+        studentId: logbookEntry.studentId,
+        habitId: logbookEntry.habitId,
+        date: logbookEntry.date,
+        time: logbookEntry.time,
+        photoUrl: logbookEntry.photoUrl,
+        caption: logbookEntry.caption,
+        status: logbookEntry.status,
+        reviewedByTeacherId: logbookEntry.reviewedByTeacherId,
+        teacherComment: logbookEntry.teacherComment,
+        teacherSticker: logbookEntry.teacherSticker,
+        parentComment: logbookEntry.parentComment,
+        xpEarned: logbookEntry.xpEarned,
+        createdAt: logbookEntry.createdAt,
+        updatedAt: logbookEntry.updatedAt,
+        // Joined fields
+        studentName: student.name,
+        studentAvatar: student.avatar,
+        habitName: habit.name,
+        habitIcon: habit.icon,
+      })
       .from(logbookEntry)
+      .innerJoin(student, eq(logbookEntry.studentId, student.id))
+      .innerJoin(habit, eq(logbookEntry.habitId, habit.id))
       .where(inArray(logbookEntry.studentId, studentIds))
       .orderBy(desc(logbookEntry.createdAt));
+
+    return entries;
   },
 
   /**
@@ -189,5 +236,34 @@ export const logbookService = {
       results.push(result);
     }
     return results;
+  },
+
+  /**
+   * Add or update a parent comment on a logbook entry.
+   * Parents cannot change status — only leave a comment.
+   */
+  async addParentComment(entryId: number, comment: string) {
+    const [entry] = await db
+      .select()
+      .from(logbookEntry)
+      .where(eq(logbookEntry.id, entryId))
+      .limit(1);
+
+    if (!entry) {
+      throw Object.assign(new Error("Entry tidak ditemukan"), {
+        statusCode: 404,
+      });
+    }
+
+    const [updated] = await db
+      .update(logbookEntry)
+      .set({
+        parentComment: comment,
+        updatedAt: new Date(),
+      })
+      .where(eq(logbookEntry.id, entryId))
+      .returning();
+
+    return updated;
   },
 };

@@ -118,4 +118,23 @@ export const classService = {
     await db.delete(classTable).where(eq(classTable.id, classId));
     return { success: true };
   },
+
+  /**
+   * Get a class by its ID (public — used by parent after JWT decode).
+   */
+  async getByIdPublic(classId: number) {
+    const [cls] = await db
+      .select()
+      .from(classTable)
+      .where(eq(classTable.id, classId))
+      .limit(1);
+
+    if (!cls) {
+      throw Object.assign(new Error("Kelas tidak ditemukan"), {
+        statusCode: 404,
+      });
+    }
+
+    return cls;
+  },
 };

@@ -29,6 +29,7 @@ export function PhotoLogbook({ studentId }: PhotoLogbookProps) {
   const [photoBlob, setPhotoBlob] = useState<File | null>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -43,12 +44,18 @@ export function PhotoLogbook({ studentId }: PhotoLogbookProps) {
     }
   }, [preSelectedHabitId]);
 
-  // Start camera
-  const startCamera = async () => {
+  // Start camera with specified facing mode
+  const startCamera = async (mode?: "environment" | "user") => {
+    const useMode = mode ?? facingMode;
     setCameraError(null);
+    // Stop existing stream first
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } },
+        video: { facingMode: useMode, width: { ideal: 640 }, height: { ideal: 480 } },
         audio: false,
       });
       streamRef.current = stream;
@@ -64,6 +71,13 @@ export function PhotoLogbook({ studentId }: PhotoLogbookProps) {
       setCameraError("Kamera tidak tersedia. Gunakan upload dari galeri.");
       setShowCamera(false);
     }
+  };
+
+  // Switch between front and back camera
+  const switchCamera = () => {
+    const newMode = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(newMode);
+    startCamera(newMode);
   };
 
   // Capture photo from camera
@@ -199,30 +213,45 @@ export function PhotoLogbook({ studentId }: PhotoLogbookProps) {
       {/* Submit form */}
       {showForm && (
         <form className="logbook-form" onSubmit={handleSubmit}>
-          {/* Habit selector */}
+          {/* Habit selector — custom button grid */}
           <div className="form-group">
-            <label htmlFor="logbook-habit">Pilih Misi</label>
-            <select
-              id="logbook-habit"
-              value={selectedHabitId}
-              onChange={(e) => setSelectedHabitId(Number(e.target.value))}
-              required
-            >
-              <option value={0}>— Pilih kebiasaan —</option>
+            <label>Pilih Misi</label>
+            <div className="habit-selector-grid" style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "8px",
+            }}>
               {habits?.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.icon} {h.name}
-                </option>
+                <button
+                  key={h.id}
+                  type="button"
+                  onClick={() => setSelectedHabitId(h.id)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "10px 12px",
+                    borderRadius: "12px",
+                    border: selectedHabitId === h.id
+                      ? "2px solid #FFB703"
+                      : "2px solid rgba(255,255,255,0.1)",
+                    background: selectedHabitId === h.id
+                      ? "rgba(255, 183, 3, 0.15)"
+                      : "rgba(255,255,255,0.05)",
+                    color: "#fff",
+                    fontSize: "13px",
+                    fontWeight: selectedHabitId === h.id ? 700 : 500,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    textAlign: "left",
+                  }}
+                >
+                  <span style={{ fontSize: "20px" }}>{h.icon}</span>
+                  <span>{h.name}</span>
+                </button>
               ))}
-            </select>
-          </div>
-
-          {selectedHabit && (
-            <div className="logbook-selected-habit">
-              <span className="logbook-selected-habit__icon">{selectedHabit.icon}</span>
-              <span className="logbook-selected-habit__name">{selectedHabit.name}</span>
             </div>
-          )}
+          </div>
 
           {/* Caption */}
           <div className="form-group">
@@ -244,10 +273,25 @@ export function PhotoLogbook({ studentId }: PhotoLogbookProps) {
             {/* Camera preview */}
             {showCamera && (
               <div className="camera-preview">
-                <video ref={videoRef} className="camera-preview__video" autoPlay playsInline muted />
-                <div className="camera-preview__controls">
+                <video
+                  ref={videoRef}
+                  className="camera-preview__video"
+                  autoPlay
+                  playsInline
+                  muted
+                  style={facingMode === "user" ? { transform: "scaleX(-1)" } : undefined}
+                />
+                <div className="camera-preview__controls" style={{ display: "flex", gap: "8px", justifyContent: "center", flexWrap: "wrap" }}>
                   <button type="button" className="btn btn-primary camera-btn" onClick={capturePhoto}>
                     📸 Ambil Foto
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline camera-btn"
+                    onClick={switchCamera}
+                    style={{ fontSize: "14px" }}
+                  >
+                    🔄 {facingMode === "environment" ? "Depan" : "Belakang"}
                   </button>
                   <button type="button" className="btn btn-outline camera-btn" onClick={stopCamera}>
                     ✕ Batal
@@ -269,7 +313,7 @@ export function PhotoLogbook({ studentId }: PhotoLogbookProps) {
             {/* Camera + Gallery buttons (when no preview and no camera) */}
             {!photoPreview && !showCamera && (
               <div className="photo-buttons">
-                <button type="button" className="btn btn-camera" onClick={startCamera}>
+                <button type="button" className="btn btn-camera" onClick={() => startCamera()}>
                   📷 Buka Kamera
                 </button>
                 <button
@@ -336,7 +380,7 @@ export function PhotoLogbook({ studentId }: PhotoLogbookProps) {
 
               {entry.photoUrl && (
                 <img
-                  src={`http://localhost:3000${entry.photoUrl}`}
+                  src={entry.photoUrl}
                   alt="Bukti misi"
                   className="logbook-entry__photo"
                   loading="lazy"

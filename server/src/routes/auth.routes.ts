@@ -55,6 +55,23 @@ router.post("/api/auth/student/login", async (req, res, next) => {
   }
 });
 
+// ── Parent login (nama anak + classCode → JWT with role "parent") ──
+router.post("/api/auth/parent/login", async (req, res, next) => {
+  try {
+    const { name, classCode } = req.body;
+
+    if (!name || !classCode) {
+      res.status(400).json({ error: "name and classCode are required" });
+      return;
+    }
+
+    const result = await authService.parentLogin(name, classCode);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // ── Better Auth catch-all (handles /api/auth/**) ──
 // This handles: sign-up, sign-in, sign-out, get-session, etc.
 // MUST be LAST so custom routes above get matched first.

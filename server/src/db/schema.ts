@@ -190,6 +190,7 @@ export const logbookEntry = sqliteTable(
     ),
     teacherComment: text("teacher_comment"),
     teacherSticker: text("teacher_sticker"),
+    parentComment: text("parent_comment"),
     xpEarned: integer("xp_earned").notNull().default(0),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),

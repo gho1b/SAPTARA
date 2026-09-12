@@ -1,7 +1,7 @@
 import { ShipEvolution } from "../../components/ShipEvolution";
 import { Navbar } from "../../components/Navbar";
 import { useStudentInfo } from "../../hooks/use-auth";
-import { useAccessories, useStudentAccessories, usePurchaseAccessory } from "../../hooks/use-rewards";
+import { useStudentAccessories, usePurchaseAccessory } from "../../hooks/use-rewards";
 import { useStudent } from "../../hooks/use-students";
 
 /**
@@ -14,11 +14,8 @@ export function ShipPage() {
   const studentInfo = useStudentInfo();
   const studentId = studentInfo?.studentId ?? 0;
   const { data: student } = useStudent(studentId);
-  const { data: allAccessories } = useAccessories();
-  const { data: ownedAccessories } = useStudentAccessories(studentId);
+  const { data: accessories } = useStudentAccessories(studentId);
   const purchaseAccessory = usePurchaseAccessory(studentId);
-
-  const ownedSet = new Set(ownedAccessories?.map((a) => a.accessoryId) ?? []);
 
   const handlePurchase = (accessoryId: string) => {
     purchaseAccessory.mutate({ accessoryId });
@@ -38,16 +35,15 @@ export function ShipPage() {
         <p className="shop-coins">🪙 Koin tersedia: {student?.coins ?? 0}</p>
 
         <div className="accessories-grid">
-          {allAccessories?.map((acc) => {
-            const owned = ownedSet.has(acc.id);
+          {accessories?.map((acc) => {
             const canAfford = (student?.coins ?? 0) >= acc.price;
 
             return (
-              <div key={acc.id} className={`accessory-card ${owned ? "owned" : ""}`}>
+              <div key={acc.id} className={`accessory-card ${acc.owned ? "owned" : ""}`}>
                 <span className="accessory-card__icon">{acc.icon}</span>
                 <span className="accessory-card__name">{acc.name}</span>
                 <span className="accessory-card__price">🪙 {acc.price}</span>
-                {owned ? (
+                {acc.owned ? (
                   <span className="accessory-card__badge">✅ Dimiliki</span>
                 ) : (
                   <button

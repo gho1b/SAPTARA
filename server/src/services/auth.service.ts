@@ -93,4 +93,67 @@ export const authService = {
 
     return t || null;
   },
+
+  /**
+   * Parent login — same lookup as student but JWT role is "parent".
+   * Allows parents to view their child's data without action rights.
+   */
+  async parentLogin(name: string, classCode: string) {
+    // Find class by classCode
+    const [cls] = await db
+      .select()
+      .from(classTable)
+      .where(eq(classTable.classCode, classCode.toUpperCase()))
+      .limit(1);
+
+    if (!cls) {
+      throw Object.assign(new Error("Kelas tidak ditemukan"), {
+        statusCode: 404,
+      });
+    }
+
+    // Find student by name in that class (case-insensitive)
+    const [matchedStudent] = await db
+      .select()
+      .from(student)
+      .where(
+        and(
+          sql`lower(${student.name}) = lower(${name})`,
+          eq(student.classId, cls.id)
+        )
+      )
+      .limit(1);
+
+    if (!matchedStudent) {
+      throw Object.assign(
+        new Error("Nama anak tidak ditemukan di kelas ini. Hubungi gurunya!"),
+        { statusCode: 404 }
+      );
+    }
+
+    const payload = {
+      studentId: matchedStudent.id,
+      classId: cls.id,
+      studentName: matchedStudent.name,
+      role: "parent" as const,
+    };
+
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
+
+    return {
+      token,
+      parent: {
+        studentId: matchedStudent.id,
+        classId: cls.id,
+        studentName: matchedStudent.name,
+        studentAvatar: matchedStudent.avatar,
+      },
+      class: {
+        id: cls.id,
+        classCode: cls.classCode,
+        schoolName: cls.schoolName,
+        shipName: cls.shipName,
+      },
+    };
+  },
 };

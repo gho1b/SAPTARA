@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   useTeacherSession,
@@ -7,9 +7,11 @@ import {
   useCreateTeacherProfile,
   useStudentLogin,
   useStudentInfo,
+  useParentLogin,
+  useParentInfo,
 } from "../hooks/use-auth";
 
-type AuthMode = "select" | "teacher-login" | "teacher-register" | "student-login";
+type AuthMode = "select" | "teacher-login" | "teacher-register" | "student-login" | "parent-login";
 
 /**
  * Landing Page
@@ -20,17 +22,24 @@ type AuthMode = "select" | "teacher-login" | "teacher-register" | "student-login
  */
 export function LandingPage() {
   const navigate = useNavigate();
-  const { data: session } = useTeacherSession();
+  const { data: session, isPending: sessionPending } = useTeacherSession();
   const studentInfo = useStudentInfo();
+  const parentInfo = useParentInfo();
   const [mode, setMode] = useState<AuthMode>("select");
 
-  // If already logged in, redirect
-  if (session?.user) {
-    navigate("/teacher/feed", { replace: true });
-    return null;
-  }
-  if (studentInfo) {
-    navigate("/student/map", { replace: true });
+  // Redirect if already logged in — use useEffect to avoid calling navigate() during render
+  useEffect(() => {
+    if (!sessionPending && session?.user) {
+      navigate("/teacher/feed", { replace: true });
+    } else if (studentInfo) {
+      navigate("/student/map", { replace: true });
+    } else if (parentInfo) {
+      navigate("/parent/feed", { replace: true });
+    }
+  }, [sessionPending, session?.user, studentInfo, parentInfo, navigate]);
+
+  // Show nothing while redirecting
+  if ((!sessionPending && session?.user) || studentInfo || parentInfo) {
     return null;
   }
 
@@ -71,6 +80,17 @@ export function LandingPage() {
               <span className="role-card__title">Kapten Cilik</span>
               <span className="role-card__desc">Masuk sebagai Murid</span>
             </button>
+
+            <button
+              className="role-card parent-card"
+              onClick={() => setMode("parent-login")}
+              type="button"
+              id="btn-parent-entry"
+            >
+              <span className="role-card__icon">👨‍👩‍👦</span>
+              <span className="role-card__title">Penjaga Kompas</span>
+              <span className="role-card__desc">Masuk sebagai Orang Tua</span>
+            </button>
           </div>
         </div>
       )}
@@ -92,10 +112,27 @@ export function LandingPage() {
         <StudentLoginForm onBack={() => setMode("select")} />
       )}
 
+      {mode === "parent-login" && (
+        <ParentLoginForm onBack={() => setMode("select")} />
+      )}
+
       {/* Footer */}
       <div className="landing-footer">
         <p>🌊 Jelajahi 7 samudra, bangun 7 kebiasaan baik! 🌊</p>
       </div>
+
+      {/* Help Desk — floating icon pojok kanan atas */}
+      <a
+        href="https://s.id/FULLSAPTARA"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="helpdesk-fab"
+        aria-label="Help Desk SAPTARA"
+        title="Help Desk SAPTARA"
+      >
+        🛟
+        <span className="helpdesk-fab__tooltip">bantuan disini</span>
+      </a>
     </div>
   );
 }
@@ -297,6 +334,65 @@ function StudentLoginForm({ onBack }: { onBack: () => void }) {
         </button>
         {studentLogin.isError && (
           <p className="error-text">❌ {studentLogin.error.message}</p>
+        )}
+      </form>
+    </div>
+  );
+}
+
+// ── Parent Login Form ──
+
+function ParentLoginForm({ onBack }: { onBack: () => void }) {
+  const navigate = useNavigate();
+  const parentLogin = useParentLogin();
+  const [name, setName] = useState("");
+  const [classCode, setClassCode] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await parentLogin.mutateAsync({ name, classCode });
+      navigate("/parent/feed");
+    } catch {
+      // error available via parentLogin.error
+    }
+  };
+
+  return (
+    <div className="auth-form">
+      <button className="btn-back" onClick={onBack} type="button">← Kembali</button>
+      <h2>👨‍👩‍👦 Masuk sebagai Penjaga Kompas</h2>
+      <p style={{ opacity: 0.7, fontSize: "13px", marginBottom: "16px" }}>
+        Masukkan nama anak dan kode kelas yang diberikan guru
+      </p>
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label htmlFor="parent-child-name">Nama Anak</label>
+          <input
+            id="parent-child-name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Arya Pratama"
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="parent-class-code">Kode Kelas</label>
+          <input
+            id="parent-class-code"
+            type="text"
+            value={classCode}
+            onChange={(e) => setClassCode(e.target.value)}
+            placeholder="4A"
+            required
+          />
+        </div>
+        <button type="submit" className="btn btn-primary" disabled={parentLogin.isPending}>
+          {parentLogin.isPending ? "Memproses..." : "🏠 Masuk sebagai Penjaga Kompas"}
+        </button>
+        {parentLogin.isError && (
+          <p className="error-text">❌ {(parentLogin.error as Error).message}</p>
         )}
       </form>
     </div>

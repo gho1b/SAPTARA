@@ -12,11 +12,13 @@ import { FeedPage } from "./pages/teacher/FeedPage";
 import { AnalyticsPage } from "./pages/teacher/AnalyticsPage";
 import { RewardsPage } from "./pages/teacher/RewardsPage";
 import { CrewPage } from "./pages/teacher/CrewPage";
+import { ParentFeedPage } from "./pages/parent/ParentFeedPage";
+import { ParentAnalyticsPage } from "./pages/parent/ParentAnalyticsPage";
 
 /**
  * App Component
  *
- * Sets up React Router with all student and teacher routes.
+ * Sets up React Router with all student, teacher, and parent routes.
  * Protected routes gate access by authentication role.
  */
 export function App() {
@@ -100,6 +102,24 @@ export function App() {
               element={
                 <ProtectedRoute role="teacher">
                   <CrewPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ── Parent Routes ── */}
+            <Route
+              path="/parent/feed"
+              element={
+                <ProtectedRoute role="parent">
+                  <ParentFeedPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parent/analytics"
+              element={
+                <ProtectedRoute role="parent">
+                  <ParentAnalyticsPage />
                 </ProtectedRoute>
               }
             />

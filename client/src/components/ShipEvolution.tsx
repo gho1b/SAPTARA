@@ -82,14 +82,14 @@ export function ShipEvolution({ studentId }: ShipEvolutionProps) {
         ))}
       </div>
 
-      {/* Equipped accessories */}
-      {accessories && accessories.length > 0 && (
+      {/* Equipped accessories — only show owned ones */}
+      {accessories && accessories.filter((a) => a.owned).length > 0 && (
         <div className="ship-evolution__accessories">
           <h4 className="section-title" style={{ fontSize: "14px", marginBottom: "8px" }}>
             🎨 Aksesoris Terpasang
           </h4>
           <div className="equipped-accessories-grid">
-            {accessories.map((acc) => (
+            {accessories.filter((a) => a.owned).map((acc) => (
               <div key={acc.id} className="equipped-accessory-item">
                 <span className="equipped-accessory__icon">{acc.icon || "🎁"}</span>
                 <span className="equipped-accessory__name">{acc.name || acc.accessoryId}</span>

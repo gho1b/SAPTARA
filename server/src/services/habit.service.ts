@@ -1,6 +1,7 @@
 import { db } from "../db/index.js";
 import { habit, habitCompletion, student } from "../db/schema.js";
 import { eq, and, sql } from "drizzle-orm";
+import { getWIBDate, getWIBDateDaysAgo } from "../utils/timezone.js";
 
 export const habitService = {
   /**
@@ -14,7 +15,7 @@ export const habitService = {
    * Get today's missions for a student with completion status.
    */
   async getTodayMissions(studentId: number) {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getWIBDate();
 
     const allHabits = await db.select().from(habit);
     const completions = await db
@@ -41,7 +42,7 @@ export const habitService = {
    * If not completed → complete (add XP/coins).
    */
   async toggleCompletion(studentId: number, habitId: number) {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getWIBDate();
 
     // Check if already completed today
     const [existing] = await db
@@ -107,13 +108,11 @@ export const habitService = {
 
     if (!s) return;
 
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split("T")[0];
+    const todayStr = getWIBDate();
+    const yesterdayStr = getWIBDateDaysAgo(1);
 
     // If last active was yesterday or today, increment/keep streak
-    if (s.lastActiveDate === yesterdayStr || s.lastActiveDate === today.toISOString().split("T")[0]) {
+    if (s.lastActiveDate === yesterdayStr || s.lastActiveDate === todayStr) {
       // Streak continues or already updated
       if (s.lastActiveDate === yesterdayStr) {
         await db
@@ -121,7 +120,7 @@ export const habitService = {
           .set({ streak: s.streak + 1 })
           .where(eq(student.id, studentId));
       }
-    } else if (s.lastActiveDate !== today.toISOString().split("T")[0]) {
+    } else if (s.lastActiveDate !== todayStr) {
       // Streak broken — reset to 1
       await db
         .update(student)
@@ -134,9 +133,7 @@ export const habitService = {
    * Get cumulative habit scores (percentage over last 30 days).
    */
   async getScores(studentId: number) {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const sinceDate = thirtyDaysAgo.toISOString().split("T")[0];
+    const sinceDate = getWIBDateDaysAgo(30);
 
     const scores: Record<number, number> = {};
 

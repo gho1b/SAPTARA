@@ -8,6 +8,7 @@ import {
 } from "../db/schema.js";
 import { eq, and, sql } from "drizzle-orm";
 import { SHIP_ACCESSORIES } from "../types/index.js";
+import { getWIBDateTime } from "../utils/timezone.js";
 
 export const rewardService = {
   /**
@@ -161,15 +162,15 @@ export const rewardService = {
     sticker: string,
     comment: string
   ) {
-    const now = new Date();
+    const { date: wibDate, time: wibTime } = getWIBDateTime();
 
     const [entry] = await db
       .insert(logbookEntry)
       .values({
         studentId,
         habitId: 1, // Default to first habit
-        date: now.toISOString().split("T")[0],
-        time: now.toTimeString().slice(0, 5),
+        date: wibDate,
+        time: wibTime,
         caption: "Pesan dari Guru",
         status: "verified",
         reviewedByTeacherId: teacherId,

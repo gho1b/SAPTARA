@@ -1,0 +1,25 @@
+[Unit]
+Description=SAPTARA — Backend API
+After=network.target nginx.service
+Requires=nginx.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/app/server
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+
+# Environment
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=DATABASE_PATH=./saptara.db
+Environment=UPLOAD_DIR=./uploads
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=saptara
+
+[Install]
+WantedBy=multi-user.target

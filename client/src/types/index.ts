@@ -22,6 +22,29 @@ export interface StudentLoginResponse {
   };
 }
 
+export interface ParentLoginResponse {
+  token: string;
+  parent: {
+    studentId: number;
+    classId: number;
+    studentName: string;
+    studentAvatar: string;
+  };
+  class: {
+    id: number;
+    classCode: string;
+    schoolName: string;
+    shipName: string;
+  };
+}
+
+export interface ParentInfo {
+  studentId: number;
+  classId: number;
+  studentName: string;
+  studentAvatar: string;
+}
+
 // ── Class ──
 
 export interface Class {
@@ -147,6 +170,7 @@ export interface LogbookEntry {
   reviewedByTeacherId: number | null;
   teacherComment: string | null;
   teacherSticker: string | null;
+  parentComment: string | null;
   xpEarned: number;
   createdAt: string;
   updatedAt: string;
@@ -208,14 +232,16 @@ export interface ShipAccessory {
 }
 
 export interface StudentAccessory {
-  id: number;
-  studentId: number;
-  accessoryId: string;
-  purchasedAt: string;
-  // Joined from static config
-  name?: string;
-  icon?: string;
-  type?: string;
+  id: string;
+  name: string;
+  icon: string;
+  price: number;
+  type: string;
+  owned: boolean;
+  // Legacy fields for backward compatibility
+  studentId?: number;
+  accessoryId?: string;
+  purchasedAt?: string;
 }
 
 export interface PurchaseAccessoryPayload {

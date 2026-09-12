@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { classService } from "../services/class.service.js";
 import { requireTeacher } from "../middleware/auth.middleware.js";
+import { requireParent } from "../middleware/parent-auth.middleware.js";
 import type { AuthenticatedRequest } from "../types/index.js";
 
 const router = Router();
@@ -38,7 +39,32 @@ router.get("/", requireTeacher, async (req: AuthenticatedRequest, res, next) => 
   }
 });
 
-// GET /api/classes/:id — Get class details + stats
+// ⚠️ Parent routes MUST come BEFORE /:id to prevent Express from treating
+// the literal "parent" string as the :id parameter.
+
+// GET /api/classes/parent/info — Parent: get own class info from JWT classId
+router.get("/parent/info", requireParent, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const classId = req.parent!.classId;
+    const cls = await classService.getByIdPublic(classId);
+    res.json(cls);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/classes/parent/students — Parent: get students in own class
+router.get("/parent/students", requireParent, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const classId = req.parent!.classId;
+    const students = await classService.getStudents(classId);
+    res.json(students);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/classes/:id — Get class details + stats  (must be AFTER /parent/*)
 router.get("/:id", requireTeacher, async (req: AuthenticatedRequest, res, next) => {
   try {
     const classId = parseInt(req.params.id as string);

@@ -1,10 +1,14 @@
 import { apiFetch } from "../lib/api-client";
-import type { Teacher, StudentLoginResponse } from "../types";
+import type { Teacher, StudentLoginResponse, ParentLoginResponse } from "../types";
 import {
   setStudentToken,
   setStudentInfo,
   removeStudentToken,
   removeStudentInfo,
+  setParentToken,
+  setParentInfo,
+  removeParentToken,
+  removeParentInfo,
 } from "../lib/api-client";
 
 /**
@@ -14,6 +18,8 @@ import {
  * - Teacher profile creation (after Better Auth sign-up)
  * - Student login (name + classCode → JWT)
  * - Student logout (clear localStorage)
+ * - Parent login (nama anak + classCode → JWT with role "parent")
+ * - Parent logout (clear localStorage)
  *
  * Note: Teacher sign-up/sign-in/sign-out are handled directly
  * by Better Auth client (see lib/auth-client.ts).
@@ -61,4 +67,37 @@ export const authService = {
     removeStudentToken();
     removeStudentInfo();
   },
+
+  /**
+   * Parent login via nama anak + class code.
+   * Returns a JWT token with role "parent" + parent info.
+   * POST /api/auth/parent/login
+   */
+  async parentLogin(
+    name: string,
+    classCode: string
+  ): Promise<ParentLoginResponse> {
+    const result = await apiFetch<ParentLoginResponse>(
+      "/api/auth/parent/login",
+      {
+        method: "POST",
+        body: JSON.stringify({ name, classCode }),
+      }
+    );
+
+    // Store token & parent info in localStorage
+    setParentToken(result.token);
+    setParentInfo(result.parent);
+
+    return result;
+  },
+
+  /**
+   * Parent logout — clears the JWT token and parent info from localStorage.
+   */
+  parentLogout(): void {
+    removeParentToken();
+    removeParentInfo();
+  },
 };
+

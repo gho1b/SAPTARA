@@ -21,20 +21,28 @@ const teacherNav: NavItem[] = [
   { icon: "👥", label: "Kru", route: "/teacher/crew" },
 ];
 
+const parentNav: NavItem[] = [
+  { icon: "📋", label: "Feed", route: "/parent/feed" },
+  { icon: "📊", label: "Analitik", route: "/parent/analytics" },
+];
+
 interface NavbarProps {
-  role: "student" | "teacher";
+  role: "student" | "teacher" | "parent";
 }
 
 /**
  * Bottom Navigation Bar
  *
- * Renders the maritime-themed bottom nav for student or teacher role.
+ * Renders the maritime-themed bottom nav for student, teacher, or parent role.
  * Highlights the active route.
  */
 export function Navbar({ role }: NavbarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const items = role === "student" ? studentNav : teacherNav;
+  const items =
+    role === "student" ? studentNav :
+    role === "parent"  ? parentNav  :
+    teacherNav;
 
   return (
     <nav className="bottom-nav" id={`nav-${role}`}>
