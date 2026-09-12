@@ -89,4 +89,15 @@ class Student extends Model
     {
         return (int) $this->xp;
     }
+
+    public function parents(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(ParentProfile::class, 'parent_student', 'student_id', 'parent_id')
+            ->withTimestamps();
+    }
+
+    public function questClaims(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(StudentDailyQuestClaim::class);
+    }
 }

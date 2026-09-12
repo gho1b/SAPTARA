@@ -29,6 +29,11 @@ export function LandingPage() {
   const [teacherName, setTeacherName] = useState("");
 
   // Parent Form
+  const [parentAuthMode, setParentAuthMode] = useState<"quick" | "account">("quick");
+  const [isParentRegister, setIsParentRegister] = useState(false);
+  const [parentName, setParentName] = useState("");
+  const [parentEmail, setParentEmail] = useState("");
+  const [parentPassword, setParentPassword] = useState("");
   const [parentChildName, setParentChildName] = useState("");
   const [parentClassCode, setParentClassCode] = useState("");
 
@@ -96,17 +101,44 @@ export function LandingPage() {
   const handleParentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    if (!parentChildName || !parentClassCode) {
-      setErrorMsg("Harap masukkan nama anak dan kode kelas");
-      return;
-    }
 
     setLoading(true);
     try {
-      await authService.parentLogin(parentChildName, parentClassCode.toUpperCase());
+      if (parentAuthMode === "quick") {
+        if (!parentChildName.trim() || !parentClassCode.trim()) {
+          setErrorMsg("Harap masukkan nama anak dan kode kelas");
+          setLoading(false);
+          return;
+        }
+        await authService.parentLogin(parentChildName.trim(), parentClassCode.trim().toUpperCase());
+      } else {
+        if (!parentEmail.trim() || !parentPassword.trim()) {
+          setErrorMsg("Harap masukkan email dan password");
+          setLoading(false);
+          return;
+        }
+
+        if (isParentRegister) {
+          if (!parentName.trim()) {
+            setErrorMsg("Harap masukkan nama lengkap Anda sebagai orang tua");
+            setLoading(false);
+            return;
+          }
+          await authService.parentRegister({
+            name: parentName.trim(),
+            email: parentEmail.trim(),
+            password: parentPassword,
+            studentName: parentChildName.trim() || undefined,
+            classCode: parentClassCode.trim().toUpperCase() || undefined,
+          });
+        } else {
+          await authService.parentLoginWithEmail(parentEmail.trim(), parentPassword);
+        }
+      }
+
       navigate("/parent/feed");
     } catch (err: any) {
-      setErrorMsg(err.message || "Gagal masuk wali murid. Periksa nama anak & kode kelas.");
+      setErrorMsg(err.message || "Gagal masuk wali murid. Periksa kembali data Anda.");
     } finally {
       setLoading(false);
     }
@@ -262,37 +294,157 @@ export function LandingPage() {
 
             {/* Parent Login Tab */}
             {activeRole === "parent" && (
-              <form onSubmit={handleParentSubmit} className="space-y-3 pt-1">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Nama Lengkap Anak (Siswa)
-                  </label>
-                  <Input
-                    placeholder="Nama anak sesuai data kelas"
-                    value={parentChildName}
-                    onChange={(e) => setParentChildName(e.target.value)}
-                  />
+              <div className="space-y-4 pt-1">
+                {/* Mode Selector */}
+                <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setParentAuthMode("quick");
+                      setErrorMsg(null);
+                    }}
+                    className={`rounded-lg py-1.5 text-xs font-bold transition-all ${
+                      parentAuthMode === "quick"
+                        ? "bg-white text-emerald-800 shadow-xs"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    ⚡ Akses Cepat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setParentAuthMode("account");
+                      setErrorMsg(null);
+                    }}
+                    className={`rounded-lg py-1.5 text-xs font-bold transition-all ${
+                      parentAuthMode === "account"
+                        ? "bg-white text-emerald-800 shadow-xs"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    ✉️ Akun Multi-Anak
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Kode Kelas Anak
-                  </label>
-                  <Input
-                    placeholder="Contoh: KLS-7A"
-                    value={parentClassCode}
-                    onChange={(e) => setParentClassCode(e.target.value)}
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  variant="emerald"
-                  size="lg"
-                  disabled={loading}
-                  className="w-full mt-2 font-display"
-                >
-                  {loading ? "Memeriksa..." : "🌿 Pantau Perkembangan Anak"}
-                </Button>
-              </form>
+
+                <form onSubmit={handleParentSubmit} className="space-y-3">
+                  {parentAuthMode === "quick" ? (
+                    <>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          Nama Lengkap Anak (Siswa)
+                        </label>
+                        <Input
+                          placeholder="Nama anak sesuai data kelas"
+                          value={parentChildName}
+                          onChange={(e) => setParentChildName(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          Kode Kelas Anak
+                        </label>
+                        <Input
+                          placeholder="Contoh: KLS-7A"
+                          value={parentClassCode}
+                          onChange={(e) => setParentClassCode(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {isParentRegister && (
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            Nama Lengkap Orang Tua
+                          </label>
+                          <Input
+                            placeholder="Bapak / Ibu Budi Santoso"
+                            value={parentName}
+                            onChange={(e) => setParentName(e.target.value)}
+                            required
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          Email Orang Tua
+                        </label>
+                        <Input
+                          type="email"
+                          placeholder="orangtua@example.com"
+                          value={parentEmail}
+                          onChange={(e) => setParentEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          Password
+                        </label>
+                        <Input
+                          type="password"
+                          placeholder="Minimal 6 karakter"
+                          value={parentPassword}
+                          onChange={(e) => setParentPassword(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      {isParentRegister && (
+                        <div className="pt-2 border-t border-slate-100 space-y-2.5">
+                          <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
+                            Hubungkan Anak Pertama (Opsional):
+                          </span>
+                          <div>
+                            <Input
+                              placeholder="Nama lengkap anak"
+                              value={parentChildName}
+                              onChange={(e) => setParentChildName(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Input
+                              placeholder="Kode kelas anak (Contoh: KLS-7A)"
+                              value={parentClassCode}
+                              onChange={(e) => setParentClassCode(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="text-center pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsParentRegister(!isParentRegister);
+                            setErrorMsg(null);
+                          }}
+                          className="text-xs text-emerald-700 hover:underline font-semibold"
+                        >
+                          {isParentRegister
+                            ? "Sudah punya akun? Masuk di sini"
+                            : "Belum punya akun? Daftar akun orang tua baru"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  <Button
+                    type="submit"
+                    variant="emerald"
+                    size="lg"
+                    disabled={loading}
+                    className="w-full mt-2 font-display"
+                  >
+                    {loading
+                      ? "Memproses..."
+                      : isParentRegister && parentAuthMode === "account"
+                      ? "Daftar Akun Wali Murid"
+                      : "🌿 Masuk Pantauan Anak"}
+                  </Button>
+                </form>
+              </div>
             )}
           </CardContent>
         </Card>

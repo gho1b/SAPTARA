@@ -3,22 +3,35 @@ import { useParentInfo } from "../../hooks/use-auth";
 import { useStudentLogbook, useAddParentComment } from "../../hooks/use-logbook";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
 import { Badge } from "../../components/ui/Badge";
 import { Dialog } from "../../components/ui/Dialog";
 import { formatDateIndo } from "../../lib/utils";
-import { HeartHandshake, CheckCircle2, MessageCircle, Sparkles, Send } from "lucide-react";
+import { HeartHandshake, CheckCircle2, MessageCircle, Sparkles, Send, UserPlus, Users, Loader2 } from "lucide-react";
 import confetti from "canvas-confetti";
+import { authService } from "../../services/auth.service";
+import { useQueryClient } from "@tanstack/react-query";
+import { logbookKeys } from "../../hooks/use-logbook";
 
 export function ParentFeedPage() {
   const parentInfo = useParentInfo();
   const studentId = parentInfo?.studentId ?? 0;
   const { data: entries, isLoading } = useStudentLogbook(studentId);
   const commentMutation = useAddParentComment(studentId);
+  const queryClient = useQueryClient();
 
   // Comment dialog state
   const [commentModalOpen, setCommentModalOpen] = useState(false);
   const [activeEntryId, setActiveEntryId] = useState<number | null>(null);
   const [commentText, setCommentText] = useState("");
+
+  // Link child dialog state
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [linkChildName, setLinkChildName] = useState("");
+  const [linkClassCode, setLinkClassCode] = useState("");
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [switchingChildId, setSwitchingChildId] = useState<number | null>(null);
 
   const handleOpenComment = (entryId: number) => {
     setActiveEntryId(entryId);
@@ -39,24 +52,114 @@ export function ParentFeedPage() {
     }
   };
 
+  const handleSwitchChild = async (childId: number) => {
+    if (childId === studentId) return;
+    try {
+      setSwitchingChildId(childId);
+      await authService.parentSwitchChild(childId);
+      window.dispatchEvent(new Event("parent_info_updated"));
+      queryClient.invalidateQueries({ queryKey: logbookKeys.byStudent(childId) });
+    } catch (err: any) {
+      alert(err.message || "Gagal beralih profil anak");
+    } finally {
+      setSwitchingChildId(null);
+    }
+  };
+
+  const handleLinkChild = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLinkError(null);
+
+    if (!linkChildName.trim() || !linkClassCode.trim()) {
+      setLinkError("Harap masukkan nama lengkap anak dan kode kelas");
+      return;
+    }
+
+    try {
+      setLinkLoading(true);
+      await authService.parentLinkChild(linkChildName.trim(), linkClassCode.trim().toUpperCase());
+      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+      window.dispatchEvent(new Event("parent_info_updated"));
+      setLinkChildName("");
+      setLinkClassCode("");
+      setLinkModalOpen(false);
+    } catch (err: any) {
+      setLinkError(err.message || "Gagal menghubungkan anak. Pastikan nama dan kode kelas sesuai.");
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
+  const children = parentInfo?.children ?? [];
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 pb-24 space-y-6">
       {/* Header Greeting */}
       <div className="rounded-3xl bg-gradient-to-r from-emerald-500 to-teal-600 p-6 text-white shadow-lg shadow-emerald-500/15">
-        <div className="flex items-center gap-3.5">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-3xl border border-white/30">
-            {parentInfo?.studentAvatar || "🧒"}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-3xl border border-white/30">
+              {parentInfo?.studentAvatar || "🧒"}
+            </div>
+            <div>
+              <h1 className="font-display text-2xl font-bold tracking-tight">
+                Buku Pantauan {parentInfo?.studentName || "Ananda"} 🌿
+              </h1>
+              <p className="text-xs text-emerald-100 mt-0.5">
+                Lihat kegiatan dan berikan kata-kata penyemangat untuk kebiasaan baik anak di rumah dan sekolah
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-display text-2xl font-bold tracking-tight">
-              Buku Pantauan {parentInfo?.studentName || "Ananda"} 🌿
-            </h1>
-            <p className="text-xs text-emerald-100 mt-0.5">
-              Lihat kegiatan dan berikan kata-kata penyemangat untuk kebiasaan baik anak di rumah dan sekolah
-            </p>
-          </div>
+
+          <Button
+            size="sm"
+            onClick={() => setLinkModalOpen(true)}
+            className="bg-white/20 hover:bg-white/30 text-white border border-white/30 rounded-xl text-xs font-bold gap-1.5 self-start sm:self-center"
+          >
+            <UserPlus className="h-4 w-4" />
+            <span>+ Tambah Anak</span>
+          </Button>
         </div>
       </div>
+
+      {/* Multi-Child Selector (Phase 15) */}
+      {children.length > 0 && (
+        <Card className="border-emerald-100/80 bg-emerald-50/40 p-3 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span className="text-xs font-bold text-slate-700">Pilih Anak yang Dipantau:</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {children.map((child) => {
+                const isActive = child.id === studentId;
+                const isSwitching = switchingChildId === child.id;
+
+                return (
+                  <button
+                    key={child.id}
+                    onClick={() => handleSwitchChild(child.id)}
+                    disabled={isActive || !!switchingChildId}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      isActive
+                        ? "bg-emerald-600 text-white shadow-xs scale-105"
+                        : "bg-white text-slate-700 border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50"
+                    }`}
+                  >
+                    <span>{child.avatar || "🧒"}</span>
+                    <span>{child.name}</span>
+                    <span className="text-[10px] opacity-75">
+                      ({child.className || child.classCode})
+                    </span>
+                    {isSwitching && <Loader2 className="h-3 w-3 animate-spin" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Feed List */}
       <div>
@@ -64,7 +167,7 @@ export function ParentFeedPage() {
           <div>
             <h2 className="font-display text-lg font-bold text-slate-800 flex items-center gap-2">
               <HeartHandshake className="h-5 w-5 text-emerald-600" />
-              <span>Jurnal Pembiasaan Ananda</span>
+              <span>Jurnal Pembiasaan {parentInfo?.studentName || "Ananda"}</span>
             </h2>
             <p className="text-xs text-slate-500">
               Foto dan cerita kegiatan yang diunggah oleh ananda
@@ -139,22 +242,22 @@ export function ParentFeedPage() {
 
                   {/* Parent Feedback */}
                   {entry.parentComment ? (
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-2.5 text-xs text-emerald-950">
-                      <div className="flex items-center gap-1 font-bold text-[11px] text-emerald-800">
-                        <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
-                        <span>Catatan Hangat Ayah/Bunda:</span>
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-2.5 text-xs text-emerald-900">
+                      <div className="flex items-center gap-1.5 font-bold text-[11px] text-emerald-800">
+                        <HeartHandshake className="h-3.5 w-3.5 text-emerald-600" />
+                        <span>Komentar Ayah / Ibu:</span>
                       </div>
-                      <p className="mt-1 text-xs italic">"{entry.parentComment}"</p>
+                      <p className="mt-1 text-xs">{entry.parentComment}</p>
                     </div>
                   ) : (
                     <Button
-                      size="sm"
                       variant="outline"
+                      size="sm"
                       onClick={() => handleOpenComment(entry.id)}
-                      className="w-full text-xs text-emerald-700 hover:bg-emerald-50 border-emerald-200 gap-1.5"
+                      className="w-full text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50"
                     >
-                      <MessageCircle className="h-3.5 w-3.5" />
-                      <span>Beri Apresiasi Hangat untuk Ananda</span>
+                      <MessageCircle className="h-3.5 w-3.5 mr-1" />
+                      Beri Kata Penyemangat
                     </Button>
                   )}
                 </div>
@@ -164,32 +267,101 @@ export function ParentFeedPage() {
         )}
       </div>
 
-      {/* Parent Comment Dialog */}
+      {/* Modal Beri Komentar */}
       <Dialog
-        open={commentModalOpen}
+        isOpen={commentModalOpen}
         onClose={() => setCommentModalOpen(false)}
-        title="Beri Pesan Kasih Sayang 💖"
-        description="Tuliskan ucapan penyemangat atau terima kasih atas kebaikan yang ananda lakukan"
+        title="Beri Kata Penyemangat untuk Ananda 🌿"
+        description="Dukungan dan apresiasi dari orang tua adalah motivasi terbesar untuk pembentukan karakter anak."
       >
-        <form onSubmit={handleSubmitComment} className="space-y-4 pt-2">
+        <form onSubmit={handleSubmitComment} className="space-y-4">
           <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Pesan / Komentar Anda
+            </label>
             <textarea
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Contoh: Ayah dan Bunda bangga melihatmu bangun pagi dan merapikan tempat tidur sendiri. Pertahankan ya nak!"
+              placeholder="Contoh: Hebat sekali nak! Terus pertahankan ya sayang, Ayah dan Ibu bangga."
               rows={4}
               required
-              className="w-full rounded-xl border border-slate-200 p-3 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              className="w-full rounded-2xl border border-slate-200 p-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" type="button" onClick={() => setCommentModalOpen(false)}>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCommentModalOpen(false)}
+            >
               Batal
             </Button>
-            <Button variant="emerald" size="sm" type="submit" disabled={commentMutation.isPending}>
-              <Send className="h-3.5 w-3.5" />
-              <span>Kirim Pesan</span>
+            <Button
+              type="submit"
+              disabled={commentMutation.isPending}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+            >
+              <Send className="h-3.5 w-3.5 mr-1" />
+              {commentMutation.isPending ? "Mengirim..." : "Kirim Penyemangat"}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      {/* Modal Hubungkan Anak Tambahan */}
+      <Dialog
+        isOpen={linkModalOpen}
+        onClose={() => setLinkModalOpen(false)}
+        title="Hubungkan Profil Anak Lain 🧒"
+        description="Masukkan nama lengkap dan kode akses kelas anak Anda untuk dipantau dalam satu akun orang tua."
+      >
+        <form onSubmit={handleLinkChild} className="space-y-4">
+          {linkError && (
+            <div className="rounded-xl bg-red-50 p-3 text-xs text-red-600 border border-red-200">
+              {linkError}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Nama Lengkap Anak (Siswa) <span className="text-red-500">*</span>
+            </label>
+            <Input
+              value={linkChildName}
+              onChange={(e) => setLinkChildName(e.target.value)}
+              placeholder="Sesuai nama yang didaftarkan guru di kelas"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Kode Kelas Anak <span className="text-red-500">*</span>
+            </label>
+            <Input
+              value={linkClassCode}
+              onChange={(e) => setLinkClassCode(e.target.value)}
+              placeholder="Contoh: KLS-7A"
+              required
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setLinkModalOpen(false)}
+              disabled={linkLoading}
+            >
+              Batal
+            </Button>
+            <Button
+              type="submit"
+              disabled={linkLoading}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+            >
+              {linkLoading ? "Menghubungkan..." : "Hubungkan Anak"}
             </Button>
           </div>
         </form>

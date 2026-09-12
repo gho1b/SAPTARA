@@ -9,6 +9,7 @@ use App\Http\Controllers\HabitController;
 use App\Http\Controllers\LogbookController;
 use App\Http\Controllers\RewardController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\QuestController;
 use Illuminate\Support\Facades\Route;
 
 // ── Health check ──────────────────────────────────────────────
@@ -20,10 +21,14 @@ Route::get('/health', fn() => response()->json([
 ]));
 
 // ── Auth ──────────────────────────────────────────────────────
-Route::post('/auth/teacher/register', [TeacherAuthController::class, 'register']);
-Route::post('/auth/teacher/login',    [TeacherAuthController::class, 'login']);
-Route::post('/auth/student/login',    [StudentAuthController::class, 'login']);
-Route::post('/auth/parent/login',     [ParentAuthController::class, 'login']);
+Route::post('/auth/teacher/register',          [TeacherAuthController::class, 'register']);
+Route::post('/auth/teacher/login',             [TeacherAuthController::class, 'login']);
+Route::post('/auth/student/login',             [StudentAuthController::class, 'login']);
+Route::post('/auth/parent/login',              [ParentAuthController::class, 'login']);
+Route::post('/auth/parent/register',           [ParentAuthController::class, 'register']);
+Route::post('/auth/parent/login-email',        [ParentAuthController::class, 'loginWithEmail']);
+Route::post('/auth/parent/link-child',         [ParentAuthController::class, 'linkChild']);
+Route::post('/auth/parent/switch-child/{id}',  [ParentAuthController::class, 'switchChild']);
 
 // ── Teacher routes (Sanctum) ──────────────────────────────────
 Route::middleware(['auth:sanctum', 'auth.teacher'])->group(function () {
@@ -52,6 +57,11 @@ Route::middleware(['auth:sanctum', 'auth.teacher'])->group(function () {
     Route::patch('/logbook/{id}/reject',  [LogbookController::class, 'reject']);
     Route::post('/logbook/batch-verify',  [LogbookController::class, 'batchVerify']);
 
+    // Custom Habits (Phase 16)
+    Route::post('/habits',                [HabitController::class, 'store']);
+    Route::put('/habits/{id}',            [HabitController::class, 'update']);
+    Route::delete('/habits/{id}',         [HabitController::class, 'destroy']);
+
     // Rewards
     Route::post('/rewards/badges',   [RewardController::class, 'awardBadge']);
     Route::post('/rewards/message',  [RewardController::class, 'sendMessage']);
@@ -59,9 +69,10 @@ Route::middleware(['auth:sanctum', 'auth.teacher'])->group(function () {
 
 // ── Student routes (JWT) ──────────────────────────────────────
 Route::middleware(['auth.student'])->group(function () {
-    Route::post('/logbook',                      [LogbookController::class, 'store']);
-    Route::post('/habits/toggle',                [HabitController::class, 'toggle']);
-    Route::post('/rewards/accessories/purchase', [RewardController::class, 'purchase']);
+    Route::post('/logbook',                              [LogbookController::class, 'store']);
+    Route::post('/habits/toggle',                        [HabitController::class, 'toggle']);
+    Route::post('/rewards/accessories/purchase',         [RewardController::class, 'purchase']);
+    Route::post('/students/{id}/quests/{questKey}/claim', [QuestController::class, 'claim']);
 });
 
 // ── Parent routes (JWT role=parent) ──────────────────────────
@@ -78,6 +89,7 @@ Route::middleware(['auth.teacher.or.parent'])->group(function () {
 // ── Public routes ─────────────────────────────────────────────
 Route::get('/habits',                                [HabitController::class, 'index']);
 Route::get('/habits/missions/{studentId}',           [HabitController::class, 'todayMissions']);
+Route::get('/students/{id}/quests',                  [QuestController::class, 'index']);
 Route::get('/logbook/student/{studentId}',           [LogbookController::class, 'byStudent']);
 Route::get('/students/{classId}/list',               [StudentController::class, 'byClass']);
 Route::get('/students/{classId}/leaderboard',        [StudentController::class, 'leaderboard']);

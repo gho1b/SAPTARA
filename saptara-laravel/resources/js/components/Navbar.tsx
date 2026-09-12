@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useStudentInfo, useStudentLogout, useTeacherInfo, useTeacherLogout, useParentInfo, useParentLogout } from "../hooks/use-auth";
 import { useStudentDashboard } from "../hooks/use-students";
+import { authService } from "../services/auth.service";
 import { Button } from "./ui/Button";
 
 export function Navbar() {
@@ -100,10 +101,28 @@ export function Navbar() {
 
           {isParent && (
             <div className="hidden sm:flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-500">Wali Murid dari:</span>
-              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
-                {parentInfo?.studentAvatar || "🧒"} {parentInfo?.studentName || "Siswa"}
-              </span>
+              <span className="text-xs font-semibold text-slate-500">Wali Murid:</span>
+              {parentInfo?.children && parentInfo.children.length > 1 ? (
+                <select
+                  value={parentInfo.studentId}
+                  onChange={async (e) => {
+                    const childId = Number(e.target.value);
+                    await authService.parentSwitchChild(childId);
+                    window.dispatchEvent(new Event("parent_info_updated"));
+                  }}
+                  className="rounded-full bg-emerald-100 border border-emerald-300 px-3 py-1 text-xs font-bold text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                >
+                  {parentInfo.children.map((child) => (
+                    <option key={child.id} value={child.id}>
+                      {child.avatar || "🧒"} {child.name} ({child.className || child.classCode})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+                  {parentInfo?.studentAvatar || "🧒"} {parentInfo?.studentName || "Siswa"}
+                </span>
+              )}
             </div>
           )}
 

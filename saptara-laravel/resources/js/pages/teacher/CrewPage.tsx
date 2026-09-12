@@ -19,15 +19,18 @@ import {
   Upload,
   Download,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { downloadAuthorizedFile } from "../../lib/download";
+import { ClassHabitsManager } from "../../components/ClassHabitsManager";
 
 const AVATARS = ["🧒", "👧", "👦", "🧒🏻", "👧🏻", "👦🏻", "🧑‍🦱", "👩‍🦰", "🧑‍🎓"];
 
 export function CrewPage() {
   const { data: classes } = useClasses();
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<"students" | "habits">("students");
 
   useEffect(() => {
     if (classes && classes.length > 0 && !selectedClassId) {
@@ -323,140 +326,169 @@ export function CrewPage() {
         </Card>
       )}
 
-      {/* Students List Card */}
-      <Card className="border-slate-200">
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <div>
-            <CardTitle className="text-base">Daftar Siswa Kelas</CardTitle>
-            <CardDescription>{students?.length ?? 0} siswa terdaftar dalam pelayaran</CardDescription>
-          </div>
+      {/* Tab Switcher: Awak Siswa vs Kebiasaan Kelas */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab("students")}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+            activeTab === "students"
+              ? "bg-sky-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          }`}
+        >
+          <Users className="h-4 w-4" />
+          <span>Awak Siswa ({students?.length ?? 0})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("habits")}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+            activeTab === "habits"
+              ? "bg-sky-600 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          }`}
+        >
+          <Sparkles className="h-4 w-4" />
+          <span>Kebiasaan & Misi Kelas</span>
+        </button>
+      </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleExportClassExcel(classId)}
-              disabled={downloading === `class-excel-${classId}` || !classId}
-              className="gap-1 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-              title="Unduh Rekap Data Siswa Excel/CSV"
-            >
-              {downloading === `class-excel-${classId}` ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <FileSpreadsheet className="h-3.5 w-3.5" />
-              )}
-              <span className="hidden sm:inline">Excel</span>
-            </Button>
-
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleExportClassPdf(classId)}
-              disabled={downloading === `class-pdf-${classId}` || !classId}
-              className="gap-1 text-xs text-sky-700 border-sky-300 hover:bg-sky-50"
-              title="Cetak Ringkasan Kelas PDF"
-            >
-              {downloading === `class-pdf-${classId}` ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <FileText className="h-3.5 w-3.5" />
-              )}
-              <span className="hidden sm:inline">Rekap PDF</span>
-            </Button>
-
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setImportError(null);
-                setImportSuccess(null);
-                setImportFile(null);
-                setImportModal(true);
-              }}
-              className="gap-1 text-xs text-indigo-700 border-indigo-300 hover:bg-indigo-50"
-              title="Unggah banyak siswa sekaligus dari file Excel atau CSV"
-            >
-              <Upload className="h-3.5 w-3.5" />
-              <span>Import Excel</span>
-            </Button>
-
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={handleOpenAddStudent}
-              className="gap-1.5 text-xs"
-            >
-              <UserPlus className="h-4 w-4" />
-              <span>+ Siswa</span>
-            </Button>
-          </div>
-        </CardHeader>
-
-        <CardContent>
-          {studentsLoading ? (
-            <p className="text-center py-8 text-xs text-slate-400">Memuat daftar siswa...</p>
-          ) : !students || students.length === 0 ? (
-            <div className="text-center py-10 text-slate-500">
-              <span className="text-4xl block mb-2">🧑‍🤝‍🧑</span>
-              <p className="text-xs font-semibold">Belum ada siswa di kelas ini.</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Klik tombol "+ Siswa" atau "Import Excel" untuk mendaftarkan siswa.
-              </p>
+      {activeTab === "habits" ? (
+        <ClassHabitsManager
+          classId={classId}
+          classCode={currentClass?.classCode || currentClass?.class_code}
+        />
+      ) : (
+        /* Students List Card */
+        <Card className="border-slate-200">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <div>
+              <CardTitle className="text-base">Daftar Siswa Kelas</CardTitle>
+              <CardDescription>{students?.length ?? 0} siswa terdaftar dalam pelayaran</CardDescription>
             </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {students.map((student) => (
-                <div
-                  key={student.id}
-                  className="flex items-center justify-between py-3 px-2 hover:bg-slate-50/70 rounded-xl transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{student.avatar || "🧒"}</span>
-                    <div>
-                      <h4 className="font-bold text-xs text-slate-800">{student.name}</h4>
-                      <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
-                        <span>⚡ {student.xp} mil</span>
-                        <span>•</span>
-                        <span>🔥 Streak {student.streak} hari</span>
-                        <span>•</span>
-                        <span>🪙 {student.coins} koin</span>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleExportClassExcel(classId)}
+                disabled={downloading === `class-excel-${classId}` || !classId}
+                className="gap-1 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                title="Ekspor Rekap Karakter ke Excel / CSV"
+              >
+                {downloading === `class-excel-${classId}` ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="h-3.5 w-3.5" />
+                )}
+                <span>Rekap Excel</span>
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleExportClassPdf(classId)}
+                disabled={downloading === `class-pdf-${classId}` || !classId}
+                className="gap-1 text-xs text-sky-700 border-sky-300 hover:bg-sky-50"
+                title="Unduh Rekap Karakter Kelas PDF"
+              >
+                {downloading === `class-pdf-${classId}` ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <FileText className="h-3.5 w-3.5" />
+                )}
+                <span>Rekap PDF</span>
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setImportModal(true)}
+                className="gap-1 text-xs text-amber-700 border-amber-300 hover:bg-amber-50"
+                title="Import Siswa dari file Excel/CSV"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                <span>Import Excel</span>
+              </Button>
+
+              <Button
+                size="sm"
+                onClick={handleOpenAddStudent}
+                className="gap-1 text-xs bg-sky-600 hover:bg-sky-700 text-white font-bold"
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+                <span>+ Siswa</span>
+              </Button>
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            {studentsLoading ? (
+              <p className="text-center py-8 text-xs text-slate-400">Memuat daftar siswa...</p>
+            ) : !students || students.length === 0 ? (
+              <div className="text-center py-10 text-slate-400">
+                <span className="text-4xl block mb-2">🧑‍🤝‍🧑</span>
+                <p className="text-xs font-semibold">Belum ada siswa di kelas ini.</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Klik tombol "+ Siswa" atau "Import Excel" untuk mendaftarkan siswa.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {students.map((student) => (
+                  <div
+                    key={student.id}
+                    className="flex items-center justify-between py-3 px-2 hover:bg-slate-50/70 rounded-xl transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{student.avatar || "🧒"}</span>
+                      <div>
+                        <h4 className="font-bold text-xs text-slate-800">{student.name}</h4>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
+                          <span>⚡ {student.xp} mil</span>
+                          <span>•</span>
+                          <span>🔥 Streak {student.streak} hari</span>
+                          <span>•</span>
+                          <span>🪙 {student.coins} koin</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleExportStudentPdf(student.id, student.name)}
-                      disabled={downloading === `student-${student.id}`}
-                      className="h-8 gap-1 text-[11px] text-sky-700 border-sky-200 hover:bg-sky-50"
-                      title="Cetak Raport Karakter Siswa PDF"
-                    >
-                      {downloading === `student-${student.id}` ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <FileText className="h-3.5 w-3.5" />
-                      )}
-                      <span>Raport PDF</span>
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleExportStudentPdf(student.id, student.name)}
+                        disabled={downloading === `student-${student.id}`}
+                        className="h-8 gap-1 text-[11px] text-sky-700 border-sky-200 hover:bg-sky-50"
+                        title="Cetak Raport Karakter Siswa PDF"
+                      >
+                        {downloading === `student-${student.id}` ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <FileText className="h-3.5 w-3.5" />
+                        )}
+                        <span>Raport PDF</span>
+                      </Button>
 
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleDeleteStudent(student.id, student.name)}
-                      className="text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                      title="Hapus Siswa"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDeleteStudent(student.id, student.name)}
+                        className="text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                        title="Hapus Siswa"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Modal Add Student */}
       <Dialog

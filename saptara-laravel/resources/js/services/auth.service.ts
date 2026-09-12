@@ -30,14 +30,86 @@ export const authService = {
     removeStudentToken();
   },
 
-  // Parent Login
+  // Parent Login (Quick childName + classCode)
   async parentLogin(studentName: string, classCode: string): Promise<ParentLoginResponse> {
     const result = await apiFetch<ParentLoginResponse>("/api/auth/parent/login", {
       method: "POST",
       body: JSON.stringify({ studentName, classCode }),
     });
     setParentToken(result.token);
-    setParentInfo(result.parent);
+    setParentInfo({
+      ...result.parent,
+      children: result.children ?? [],
+      user: result.user,
+    });
+    return result;
+  },
+
+  // Parent Login with Email & Password
+  async parentLoginWithEmail(email: string, password: string): Promise<ParentLoginResponse> {
+    const result = await apiFetch<ParentLoginResponse>("/api/auth/parent/login-email", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+    setParentToken(result.token);
+    setParentInfo({
+      ...result.parent,
+      children: result.children ?? [],
+      user: result.user,
+    });
+    return result;
+  },
+
+  // Parent Register (Email, Password, Optional first child)
+  async parentRegister(payload: {
+    name: string;
+    email: string;
+    password: string;
+    studentName?: string;
+    classCode?: string;
+  }): Promise<ParentLoginResponse> {
+    const result = await apiFetch<ParentLoginResponse>("/api/auth/parent/register", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    setParentToken(result.token);
+    setParentInfo({
+      ...result.parent,
+      children: result.children ?? [],
+      user: result.user,
+    });
+    return result;
+  },
+
+  // Parent Link additional child
+  async parentLinkChild(childName: string, classCode: string): Promise<{ message: string; child: any; children: any[] }> {
+    const result = await apiFetch<{ message: string; child: any; children: any[] }>("/api/auth/parent/link-child", {
+      method: "POST",
+      body: JSON.stringify({ childName, classCode }),
+    });
+    const currentInfo = getStoredParentInfo() || {};
+    setParentInfo({
+      ...currentInfo,
+      children: result.children,
+    });
+    return result;
+  },
+
+  // Parent Switch active child
+  async parentSwitchChild(childId: number): Promise<ParentLoginResponse> {
+    const result = await apiFetch<ParentLoginResponse>(`/api/auth/parent/switch-child/${childId}`, {
+      method: "POST",
+    });
+    setParentToken(result.token);
+    const currentInfo = getStoredParentInfo() || {};
+    setParentInfo({
+      ...currentInfo,
+      studentId: result.parent.studentId,
+      classId: result.parent.classId,
+      studentName: result.parent.studentName,
+      studentAvatar: result.parent.studentAvatar,
+      children: result.children ?? currentInfo.children,
+    });
     return result;
   },
 

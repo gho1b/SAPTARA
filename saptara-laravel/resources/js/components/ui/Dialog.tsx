@@ -3,7 +3,8 @@ import { cn } from "../../lib/utils";
 import { X } from "lucide-react";
 
 export interface DialogProps {
-  open: boolean;
+  open?: boolean;
+  isOpen?: boolean;
   onClose: () => void;
   title?: string;
   description?: string;
@@ -11,8 +12,9 @@ export interface DialogProps {
   className?: string;
 }
 
-export function Dialog({ open, onClose, title, description, children, className }: DialogProps) {
-  if (!open) return null;
+export function Dialog({ open, isOpen, onClose, title, description, children, className }: DialogProps) {
+  const isVisible = open ?? isOpen ?? false;
+  if (!isVisible) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

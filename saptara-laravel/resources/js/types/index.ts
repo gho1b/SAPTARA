@@ -19,14 +19,35 @@ export interface StudentLoginResponse {
   };
 }
 
+export interface ParentChild {
+  id: number;
+  name: string;
+  avatar: string;
+  classId: number;
+  classCode: string;
+  className: string;
+  schoolName: string;
+  shipName: string;
+  level: number;
+  xp: number;
+  coins: number;
+}
+
 export interface ParentLoginResponse {
   token: string;
+  role?: string;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+  };
   parent: {
     studentId: number;
     classId: number;
     studentName: string;
     studentAvatar: string;
   };
+  children?: ParentChild[];
   class?: {
     id: number;
     classCode: string;
@@ -40,6 +61,7 @@ export interface ParentInfo {
   classId: number;
   studentName: string;
   studentAvatar: string;
+  children?: ParentChild[];
 }
 
 export interface Class {
@@ -102,12 +124,43 @@ export interface Habit {
   description: string;
   positionX: number;
   positionY: number;
+  is_custom?: boolean;
+  isCustom?: boolean;
+  class_id?: number | null;
+  created_by_teacher_id?: number | null;
+  completions_count?: number;
+  logbook_entries_count?: number;
 }
 
 export interface TodayMission {
   habit: Habit;
   completed: boolean;
   completedAt?: string;
+}
+
+export interface DailyQuest {
+  key: string;
+  title: string;
+  description: string;
+  icon: string;
+  target: number;
+  progress: number;
+  completed: boolean;
+  claimed: boolean;
+  rewardXp: number;
+  rewardCoins: number;
+}
+
+export interface DailyQuestsResponse {
+  date: string;
+  quests: DailyQuest[];
+}
+
+export interface MilestoneReward {
+  days: number;
+  bonus_xp: number;
+  bonus_coins: number;
+  title: string;
 }
 
 export interface StudentDashboard {
@@ -149,10 +202,14 @@ export interface ToggleHabitPayload {
 }
 
 export interface ToggleHabitResponse {
-  completed: boolean;
-  xpChange: number;
-  newXP: number;
-  newCoins: number;
+  action?: "completed" | "uncompleted";
+  habit_id?: number;
+  completed?: boolean;
+  streak?: number;
+  milestoneReward?: MilestoneReward | null;
+  xpChange?: number;
+  newXP?: number;
+  newCoins?: number;
 }
 
 export interface LogbookEntry {

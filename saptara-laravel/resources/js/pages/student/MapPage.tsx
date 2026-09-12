@@ -1,12 +1,16 @@
+import { useState } from "react";
 import { useStudentInfo } from "../../hooks/use-auth";
 import { useStudentDashboard } from "../../hooks/use-students";
 import { useTodayMissions, useToggleHabit } from "../../hooks/use-habits";
 import { OceanMap } from "../../components/OceanMap";
+import { DailyQuests } from "../../components/DailyQuests";
 import { Mascot } from "../../components/Mascot";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
-import { CheckCircle2, Circle, Flame, Sparkles, Navigation } from "lucide-react";
+import { Button } from "../../components/ui/Button";
+import { CheckCircle2, Circle, Flame, Sparkles, Navigation, Trophy, Coins, X } from "lucide-react";
 import confetti from "canvas-confetti";
+import type { MilestoneReward } from "../../types";
 
 export function MapPage() {
   const studentInfo = useStudentInfo();
@@ -14,17 +18,28 @@ export function MapPage() {
   const { data: dashboard } = useStudentDashboard(studentId);
   const { data: missions, isLoading: missionsLoading } = useTodayMissions(studentId);
   const toggleMutation = useToggleHabit(studentId);
+  const [activeMilestone, setActiveMilestone] = useState<MilestoneReward | null>(null);
 
   const handleToggle = async (habitId: number, currentlyCompleted: boolean) => {
     try {
       const res = await toggleMutation.mutateAsync(habitId);
-      if (res.completed && !currentlyCompleted) {
+      if (res.action === "completed" || (res.completed && !currentlyCompleted)) {
         confetti({
           particleCount: 50,
           spread: 60,
           origin: { y: 0.7 },
           colors: ["#0ea5e9", "#f59e0b", "#10b981"],
         });
+
+        if (res.milestoneReward) {
+          setActiveMilestone(res.milestoneReward);
+          confetti({
+            particleCount: 150,
+            spread: 120,
+            origin: { y: 0.5 },
+            colors: ["#ffd700", "#ff69b4", "#00ffff", "#10b981"],
+          });
+        }
       }
     } catch {
       // ignore
@@ -69,7 +84,7 @@ export function MapPage() {
           <div>
             <h2 className="font-display text-lg font-bold text-slate-800 flex items-center gap-2">
               <Navigation className="h-5 w-5 text-sky-600" />
-              <span>Peta Samudra 7 Kebiasaan</span>
+              <span>Peta Samudra Kebiasaan</span>
             </h2>
             <p className="text-xs text-slate-500">
               Ketuk pulau untuk melihat misi dan mencatat jurnal fotomu
@@ -82,6 +97,9 @@ export function MapPage() {
 
         <OceanMap studentId={studentId} />
       </div>
+
+      {/* Daily Quests Section (Phase 17) */}
+      <DailyQuests studentId={studentId} />
 
       {/* Today's Mission Checklist */}
       <Card className="border-sky-100 shadow-sm">
@@ -124,9 +142,16 @@ export function MapPage() {
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{habit.icon}</span>
                       <div>
-                        <h4 className={`text-xs font-bold ${isCompleted ? "text-emerald-950 line-through opacity-80" : "text-slate-800"}`}>
-                          {habit.name}
-                        </h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className={`text-xs font-bold ${isCompleted ? "text-emerald-950 line-through opacity-80" : "text-slate-800"}`}>
+                            {habit.name}
+                          </h4>
+                          {habit.is_custom && (
+                            <span className="text-[10px] bg-sky-100 text-sky-700 font-semibold px-1.5 py-0.2 rounded">
+                              Khusus Kelas
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-slate-500 line-clamp-1">{habit.description}</p>
                       </div>
                     </div>
@@ -149,6 +174,55 @@ export function MapPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Streak Milestone Reward Modal */}
+      {activeMilestone && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-sm rounded-3xl bg-gradient-to-b from-amber-50 to-white p-6 shadow-2xl border-2 border-amber-300 text-center relative">
+            <button
+              onClick={() => setActiveMilestone(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 rounded-full p-1 hover:bg-slate-100"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-400 to-yellow-300 text-3xl shadow-lg shadow-amber-400/30 mb-4 animate-bounce">
+              <Trophy className="h-8 w-8 text-amber-900" />
+            </div>
+
+            <span className="inline-block px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold uppercase tracking-wider mb-2">
+              Milestone Streak Tercapai!
+            </span>
+
+            <h3 className="font-display text-xl font-black text-slate-800">
+              {activeMilestone.title}
+            </h3>
+
+            <p className="text-xs text-slate-600 mt-1 mb-4">
+              Luar biasa! Kamu telah konsisten menjalankan kebiasaan baik selama {activeMilestone.days} hari berturut-turut tanpa jeda!
+            </p>
+
+            <div className="flex items-center justify-center gap-3 bg-amber-100/60 rounded-2xl p-3.5 mb-5 border border-amber-200">
+              <div className="flex items-center gap-1.5 text-sky-800 font-bold text-sm">
+                <Sparkles className="h-4 w-4 text-sky-600" />
+                <span>+{activeMilestone.bonus_xp} XP</span>
+              </div>
+              <span className="text-amber-300 font-bold">•</span>
+              <div className="flex items-center gap-1.5 text-amber-900 font-bold text-sm">
+                <Coins className="h-4 w-4 text-amber-600" />
+                <span>+{activeMilestone.bonus_coins} Koin</span>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => setActiveMilestone(null)}
+              className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold py-2.5 rounded-2xl shadow-md shadow-amber-500/25"
+            >
+              Ambil & Terus Berlayar! ⛵
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Floating friendly mascot */}
       <Mascot />
