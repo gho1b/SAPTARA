@@ -7,9 +7,12 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../..
 import { Badge } from "../../components/ui/Badge";
 import { BarChart3, Users, Award, TrendingUp, Sparkles, AlertTriangle } from "lucide-react";
 
+import { HabitHeatmap } from "../../components/HabitHeatmap";
+
 export function AnalyticsPage() {
   const { data: classes } = useClasses();
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
+  const [heatmapStudentId, setHeatmapStudentId] = useState<number | null>(null);
 
   useEffect(() => {
     if (classes && classes.length > 0 && !selectedClassId) {
@@ -22,6 +25,18 @@ export function AnalyticsPage() {
   const { data: leaderboard } = useLeaderboard(classId);
   const { data: logbooks } = useClassLogbook(classId);
   const { data: habits } = useHabits();
+
+  useEffect(() => {
+    if (students && students.length > 0) {
+      if (!heatmapStudentId || !students.some((s) => s.id === heatmapStudentId)) {
+        setHeatmapStudentId(students[0].id);
+      }
+    } else {
+      setHeatmapStudentId(null);
+    }
+  }, [students, heatmapStudentId]);
+
+  const selectedStudent = students?.find((s) => s.id === heatmapStudentId);
 
   const totalStudents = students?.length ?? 0;
   const totalVerified = logbooks?.filter((l) => l.status === "verified").length ?? 0;
@@ -166,6 +181,36 @@ export function AnalyticsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Heatmap 60 Hari Siswa */}
+      {students && students.length > 0 && heatmapStudentId && (
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="font-bold text-sm text-slate-800">Kalender Jejak Kebiasaan Siswa</h3>
+              <p className="text-xs text-slate-400">
+                Pilih siswa untuk melihat intensitas pembiasaan 60 hari terakhir
+              </p>
+            </div>
+            <select
+              value={heatmapStudentId}
+              onChange={(e) => setHeatmapStudentId(Number(e.target.value))}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            >
+              {students.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.avatar} {s.name} ({s.xp} mil)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <HabitHeatmap
+            studentId={heatmapStudentId}
+            studentName={selectedStudent ? `${selectedStudent.avatar} ${selectedStudent.name}` : undefined}
+          />
+        </div>
+      )}
     </div>
   );
 }

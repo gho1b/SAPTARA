@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useClasses, useCreateClass } from "../../hooks/use-classes";
 import { useStudentsByClass, useCreateStudent, useDeleteStudent } from "../../hooks/use-students";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/Card";
@@ -6,8 +7,21 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Badge } from "../../components/ui/Badge";
 import { Dialog } from "../../components/ui/Dialog";
-import { Users, UserPlus, Copy, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  Users,
+  UserPlus,
+  Copy,
+  Trash2,
+  CheckCircle2,
+  AlertCircle,
+  FileSpreadsheet,
+  FileText,
+  Upload,
+  Download,
+  Loader2,
+} from "lucide-react";
 import confetti from "canvas-confetti";
+import { downloadAuthorizedFile } from "../../lib/download";
 
 const AVATARS = ["🧒", "👧", "👦", "🧒🏻", "👧🏻", "👦🏻", "🧑‍🦱", "👩‍🦰", "🧑‍🎓"];
 
@@ -44,6 +58,106 @@ export function CrewPage() {
   const [addClassError, setAddClassError] = useState<string | null>(null);
 
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  // Import modal state
+  const [importModal, setImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const handleExportStudentPdf = async (studentId: number, studentName: string) => {
+    try {
+      setDownloading(`student-${studentId}`);
+      await downloadAuthorizedFile(`/api/reports/student/${studentId}/pdf`, `Raport_SAPTARA_${studentName}.pdf`);
+    } catch (err: any) {
+      alert(err.message || "Gagal mengunduh raport PDF siswa");
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const handleExportClassPdf = async (targetClassId: number) => {
+    try {
+      setDownloading(`class-pdf-${targetClassId}`);
+      await downloadAuthorizedFile(`/api/reports/class/${targetClassId}/pdf`, `Rekap_Kelas_${targetClassId}.pdf`);
+    } catch (err: any) {
+      alert(err.message || "Gagal mengunduh rekap kelas PDF");
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const handleExportClassExcel = async (targetClassId: number) => {
+    try {
+      setDownloading(`class-excel-${targetClassId}`);
+      await downloadAuthorizedFile(`/api/reports/class/${targetClassId}/excel`, `Rekap_Kelas_${targetClassId}.csv`);
+    } catch (err: any) {
+      alert(err.message || "Gagal mengunduh rekap kelas Excel/CSV");
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      await downloadAuthorizedFile("/api/students/template", "template_import_siswa_saptara.csv");
+    } catch (err: any) {
+      alert(err.message || "Gagal mengunduh template");
+    }
+  };
+
+  const handleImportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) {
+      setImportError("Silakan pilih file Excel (.xlsx) atau .csv terlebih dahulu");
+      return;
+    }
+    if (!classId) {
+      setImportError("Silakan pilih kelas tujuan terlebih dahulu");
+      return;
+    }
+
+    setImportLoading(true);
+    setImportError(null);
+    setImportSuccess(null);
+
+    const formData = new FormData();
+    formData.append("class_id", String(classId));
+    formData.append("file", importFile);
+
+    try {
+      const token = localStorage.getItem("token") || localStorage.getItem("auth_token");
+      const res = await fetch("/api/students/import", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Gagal mengimpor data siswa");
+      }
+
+      confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+      setImportSuccess(
+        `Berhasil mengimpor ${json.imported} siswa! ${
+          json.skipped?.length ? `(${json.skipped.length} nama dilewati karena sudah terdaftar)` : ""
+        }`
+      );
+      queryClient.invalidateQueries({ queryKey: ["students", classId] });
+      setImportFile(null);
+      setTimeout(() => {
+        setImportModal(false);
+        setImportSuccess(null);
+      }, 2500);
+    } catch (err: any) {
+      setImportError(err.message || "Terjadi kesalahan saat import");
+    } finally {
+      setImportLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (classId) {
@@ -216,15 +330,66 @@ export function CrewPage() {
             <CardTitle className="text-base">Daftar Siswa Kelas</CardTitle>
             <CardDescription>{students?.length ?? 0} siswa terdaftar dalam pelayaran</CardDescription>
           </div>
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={handleOpenAddStudent}
-            className="gap-1.5 text-xs"
-          >
-            <UserPlus className="h-4 w-4" />
-            <span>Tambah Siswa</span>
-          </Button>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleExportClassExcel(classId)}
+              disabled={downloading === `class-excel-${classId}` || !classId}
+              className="gap-1 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+              title="Unduh Rekap Data Siswa Excel/CSV"
+            >
+              {downloading === `class-excel-${classId}` ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">Excel</span>
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleExportClassPdf(classId)}
+              disabled={downloading === `class-pdf-${classId}` || !classId}
+              className="gap-1 text-xs text-sky-700 border-sky-300 hover:bg-sky-50"
+              title="Cetak Ringkasan Kelas PDF"
+            >
+              {downloading === `class-pdf-${classId}` ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <FileText className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">Rekap PDF</span>
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setImportError(null);
+                setImportSuccess(null);
+                setImportFile(null);
+                setImportModal(true);
+              }}
+              className="gap-1 text-xs text-indigo-700 border-indigo-300 hover:bg-indigo-50"
+              title="Unggah banyak siswa sekaligus dari file Excel atau CSV"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              <span>Import Excel</span>
+            </Button>
+
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={handleOpenAddStudent}
+              className="gap-1.5 text-xs"
+            >
+              <UserPlus className="h-4 w-4" />
+              <span>+ Siswa</span>
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent>
@@ -235,7 +400,7 @@ export function CrewPage() {
               <span className="text-4xl block mb-2">🧑‍🤝‍🧑</span>
               <p className="text-xs font-semibold">Belum ada siswa di kelas ini.</p>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Klik tombol "+ Tambah Siswa" untuk mendaftarkan siswa pertamamu.
+                Klik tombol "+ Siswa" atau "Import Excel" untuk mendaftarkan siswa.
               </p>
             </div>
           ) : (
@@ -260,6 +425,22 @@ export function CrewPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleExportStudentPdf(student.id, student.name)}
+                      disabled={downloading === `student-${student.id}`}
+                      className="h-8 gap-1 text-[11px] text-sky-700 border-sky-200 hover:bg-sky-50"
+                      title="Cetak Raport Karakter Siswa PDF"
+                    >
+                      {downloading === `student-${student.id}` ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <FileText className="h-3.5 w-3.5" />
+                      )}
+                      <span>Raport PDF</span>
+                    </Button>
+
                     <Button
                       size="icon"
                       variant="ghost"
@@ -415,6 +596,99 @@ export function CrewPage() {
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      {/* Modal Import Siswa dari Excel / CSV */}
+      <Dialog
+        open={importModal}
+        onClose={() => setImportModal(false)}
+        title="Import Data Siswa dari Excel / CSV 📊"
+        description="Unggah berkas spreadsheet berisi daftar nama siswa untuk didaftarkan sekaligus ke kelas."
+      >
+        <div className="space-y-4 pt-1">
+          {importError && (
+            <div className="flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 p-2.5 text-xs font-semibold text-rose-700">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{importError}</span>
+            </div>
+          )}
+
+          {importSuccess && (
+            <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 p-2.5 text-xs font-semibold text-emerald-700">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <span>{importSuccess}</span>
+            </div>
+          )}
+
+          <div className="rounded-xl border border-sky-100 bg-sky-50/50 p-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-sky-900">1. Unduh Format Template</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleDownloadTemplate}
+                className="gap-1 h-7 text-xs border-sky-300 text-sky-800 hover:bg-sky-100"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>Unduh Template (.csv)</span>
+              </Button>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              Kolom wajib: <strong>Nama Siswa</strong>. Kolom opsional: <em>Avatar</em> (emoji) dan <em>Email Orang Tua</em>.
+            </p>
+          </div>
+
+          <form onSubmit={handleImportSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                2. Pilih File Excel / CSV
+              </label>
+              <input
+                type="file"
+                accept=".xlsx, .xls, .csv, .txt"
+                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                className="block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 border border-slate-200 rounded-xl p-1 bg-white"
+                required
+              />
+              {importFile && (
+                <p className="text-[11px] text-emerald-600 font-medium mt-1">
+                  ✓ File terpilih: {importFile.name} ({(importFile.size / 1024).toFixed(1)} KB)
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => setImportModal(false)}
+                disabled={importLoading}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                type="submit"
+                disabled={importLoading || !importFile}
+                className="gap-1.5"
+              >
+                {importLoading ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Mengimpor...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-3.5 w-3.5" />
+                    <span>Mulai Import</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
       </Dialog>
     </div>
   );

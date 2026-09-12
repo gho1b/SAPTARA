@@ -114,3 +114,21 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 export const apiStudentFetch = apiFetch;
 export const apiParentFetch = apiFetch;
 export const apiTeacherFetch = apiFetch;
+
+export const apiClient = {
+  get: <T>(url: string) => apiFetch<T>(url.startsWith("/api") ? url : `/api${url}`),
+  post: <T>(url: string, body?: any) =>
+    apiFetch<T>(url.startsWith("/api") ? url : `/api${url}`, {
+      method: "POST",
+      body: body instanceof FormData ? body : JSON.stringify(body),
+    }),
+  patch: <T>(url: string, body?: any) =>
+    apiFetch<T>(url.startsWith("/api") ? url : `/api${url}`, {
+      method: "PATCH",
+      body: body instanceof FormData ? body : JSON.stringify(body),
+    }),
+  delete: <T>(url: string) =>
+    apiFetch<T>(url.startsWith("/api") ? url : `/api${url}`, {
+      method: "DELETE",
+    }),
+};

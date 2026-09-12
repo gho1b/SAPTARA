@@ -8,6 +8,7 @@ use App\Http\Controllers\StudentController;
 use App\Http\Controllers\HabitController;
 use App\Http\Controllers\LogbookController;
 use App\Http\Controllers\RewardController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 
 // ── Health check ──────────────────────────────────────────────
@@ -36,8 +37,15 @@ Route::middleware(['auth:sanctum', 'auth.teacher'])->group(function () {
     Route::delete('/classes/{id}', [ClassController::class, 'destroy']);
 
     // Students management (by teacher)
-    Route::post('/students',         [StudentController::class, 'store']);
-    Route::delete('/students/{id}',  [StudentController::class, 'destroy']);
+    Route::post('/students',            [StudentController::class, 'store']);
+    Route::post('/students/import',     [StudentController::class, 'import']);
+    Route::get('/students/template',    [StudentController::class, 'downloadTemplate']);
+    Route::delete('/students/{id}',     [StudentController::class, 'destroy']);
+
+    // Reports (PDF & Excel)
+    Route::get('/reports/student/{id}/pdf',   [ReportController::class, 'exportStudentPdf']);
+    Route::get('/reports/class/{id}/pdf',     [ReportController::class, 'exportClassPdf']);
+    Route::get('/reports/class/{id}/excel',   [ReportController::class, 'exportClassExcel']);
 
     // Logbook review
     Route::patch('/logbook/{id}/verify',  [LogbookController::class, 'verify']);
@@ -77,6 +85,7 @@ Route::get('/students/profile/{id}',                 [StudentController::class, 
 Route::get('/students/{id}/dashboard',               [StudentController::class, 'dashboard']);
 Route::get('/students/{id}/weekly',                  [StudentController::class, 'weekly']);
 Route::get('/students/{id}/compass',                 [StudentController::class, 'compass']);
+Route::get('/students/{id}/heatmap',                 [StudentController::class, 'heatmap']);
 Route::get('/rewards/badges/{studentId}',            [RewardController::class, 'badges']);
 Route::get('/rewards/accessories',                   [RewardController::class, 'accessories']);
 Route::get('/rewards/accessories/{studentId}',       [RewardController::class, 'studentAccessories']);

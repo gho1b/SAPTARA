@@ -1,5 +1,6 @@
 import { useStudentInfo } from "../../hooks/use-auth";
 import { RadarChart } from "../../components/RadarChart";
+import { HabitHeatmap } from "../../components/HabitHeatmap";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/Card";
 import { Compass, Sparkles, Lightbulb } from "lucide-react";
 
@@ -48,34 +49,34 @@ export function CompassPage() {
             </CardHeader>
             <CardContent className="text-xs text-amber-950 space-y-2 leading-relaxed">
               <p>
-                Pelaut sejati tidak hanya pandai mengemudikan kapal di satu arah. Begitu pula dirimu!
+                "Kapten hebat bukan yang berlayar tanpa badai, tapi yang tekun memegang kemudi setiap hari!"
               </p>
               <p>
-                Jika salah satu kebiasaanmu nilainya masih rendah, jadikan kebiasaan itu fokus utamamu minggu ini. Misalnya, lebih giat berolahraga di pagi hari atau membaca buku cerita sebelum tidur.
+                Perhatikan kebiasaan yang jaringnya masih kecil di kompasmu. Cobalah fokus menjalankannya pekan ini!
               </p>
             </CardContent>
           </Card>
 
           <Card className="border-slate-200">
             <CardHeader className="pb-2">
-              <div className="flex items-center gap-2 text-sky-800">
+              <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-sky-500" />
-                <CardTitle className="font-display text-sm text-slate-800">
-                  Makna 7 Kebiasaan Anak Indonesia Hebat
+                <CardTitle className="font-display text-sm text-slate-900">
+                  Misi 7 Kebiasaan Anak Indonesia Hebat
                 </CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="space-y-2.5 text-xs text-slate-600">
+            <CardContent className="text-xs text-slate-600 space-y-2.5">
               <div className="flex items-start gap-2">
                 <span className="text-base">🌅</span>
                 <div>
-                  <strong className="text-slate-800">Bangun Pagi:</strong> Membangun kedisiplinan dan kesiapan menyongsong masa depan.
+                  <strong className="text-slate-800">Bangun Pagi:</strong> Memulai hari dengan semangat dan kesegaran jiwa.
                 </div>
               </div>
               <div className="flex items-start gap-2">
-                <span className="text-base">🙏</span>
+                <span className="text-base">🕌</span>
                 <div>
-                  <strong className="text-slate-800">Taat Beribadah:</strong> Menjaga hubungan suci dengan Tuhan Yang Maha Esa.
+                  <strong className="text-slate-800">Beribadah:</strong> Bersyukur dan mendekatkan diri kepada Tuhan Yang Maha Esa.
                 </div>
               </div>
               <div className="flex items-start gap-2">
@@ -112,6 +113,11 @@ export function CompassPage() {
           </Card>
         </div>
       </div>
+
+      {/* Heatmap 60 Hari */}
+      {studentId > 0 && (
+        <HabitHeatmap studentId={studentId} studentName={studentInfo?.name} />
+      )}
     </div>
   );
 }

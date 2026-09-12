@@ -71,7 +71,20 @@ class RewardController extends Controller
             'awarded_by_teacher_id'=> $request->_teacher->id,
         ]);
 
-        $habitName = Habit::find($request->habit_id)?->badge;
+        $habit = Habit::find($request->habit_id);
+        $habitName = $habit?->badge;
+
+        // Notifikasi email otomatis ke orang tua jika parent_email tersedia
+        try {
+            $student = Student::with('class')->find($request->student_id);
+            if ($student && $habit && !empty($student->parent_email)) {
+                \Illuminate\Support\Facades\Mail::to($student->parent_email)->send(
+                    new \App\Mail\BadgeAwardedMail($student, $habit)
+                );
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal mengirim email piagam: " . $e->getMessage());
+        }
 
         return response()->json(array_merge($badge->toArray(), ['badge_name' => $habitName]), 201);
     }

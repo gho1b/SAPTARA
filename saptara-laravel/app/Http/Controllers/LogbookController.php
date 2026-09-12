@@ -141,6 +141,23 @@ class LogbookController extends Controller
 
         Student::where('id', $entry->student_id)->increment('xp', $xpReward);
 
+        // Notifikasi email otomatis ke orang tua jika parent_email tersedia
+        try {
+            $student = Student::with('class')->find($entry->student_id);
+            if ($student && !empty($student->parent_email)) {
+                \Illuminate\Support\Facades\Mail::to($student->parent_email)->send(
+                    new \App\Mail\LogbookVerifiedMail(
+                        $student,
+                        $entry->load('habit'),
+                        $request->comment ?? 'Bagus, Kapten!',
+                        $request->sticker ?? '🪙'
+                    )
+                );
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal mengirim email verifikasi logbook: " . $e->getMessage());
+        }
+
         return response()->json($entry->fresh());
     }
 

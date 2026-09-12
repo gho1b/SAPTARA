@@ -151,6 +151,163 @@ class StudentController extends Controller
         return response()->json($students);
     }
 
+    /** GET /api/students/{id}/heatmap — Data kalender heatmap 60 hari */
+    public function heatmap(int $id)
+    {
+        $student = Student::findOrFail($id);
+        $since = Carbon::today()->subDays(59);
+
+        $completions = HabitCompletion::where('student_id', $id)
+            ->where('date', '>=', $since->toDateString())
+            ->select('date', DB::raw('COUNT(*) as count'))
+            ->groupBy('date')
+            ->pluck('count', 'date');
+
+        $verifiedLogs = \App\Models\LogbookEntry::where('student_id', $id)
+            ->where('status', 'verified')
+            ->where('date', '>=', $since->toDateString())
+            ->select('date', DB::raw('COUNT(*) as count'))
+            ->groupBy('date')
+            ->pluck('count', 'date');
+
+        $days = [];
+        $curr = clone $since;
+        $today = Carbon::today();
+
+        while ($curr->lte($today)) {
+            $d = $curr->toDateString();
+            $cCount = (int) ($completions[$d] ?? 0);
+            $vCount = (int) ($verifiedLogs[$d] ?? 0);
+
+            $days[$d] = [
+                'date'         => $d,
+                'completions'  => $cCount,
+                'verifiedLogs' => $vCount,
+                'level'        => min(4, (int) ceil(($cCount / 7) * 4)), // 0 to 4
+            ];
+            $curr->addDay();
+        }
+
+        return response()->json([
+            'studentId' => $id,
+            'startDate' => $since->toDateString(),
+            'endDate'   => $today->toDateString(),
+            'days'      => $days,
+        ]);
+    }
+
+    /** POST /api/students/import — Guru: Import siswa massal dari Excel / CSV */
+    public function import(Request $request)
+    {
+        if (! $request->has('class_id') && $request->has('classId')) {
+            $request->merge(['class_id' => $request->classId]);
+        }
+
+        $request->validate([
+            'class_id' => 'required|integer|exists:classes,id',
+            'file'     => 'required|file|max:5120',
+        ]);
+
+        $classId = (int) $request->class_id;
+        $file = $request->file('file');
+        $ext = strtolower($file->getClientOriginalExtension());
+
+        $rows = [];
+        if (in_array($ext, ['csv', 'txt'])) {
+            $handle = fopen($file->getRealPath(), 'r');
+            while (($data = fgetcsv($handle, 1000, ',')) !== false) {
+                if (count($data) === 1 && str_contains($data[0], ';')) {
+                    $data = str_getcsv($data[0], ';');
+                }
+                $rows[] = $data;
+            }
+            fclose($handle);
+        } else {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getRealPath());
+            $sheet = $spreadsheet->getActiveSheet();
+            $rows = $sheet->toArray();
+        }
+
+        if (empty($rows)) {
+            return response()->json(['error' => 'Berkas kosong atau tidak dapat dibaca'], 422);
+        }
+
+        $firstRow = array_map(fn($v) => strtolower(trim((string)$v)), $rows[0]);
+        $startIndex = 0;
+        if (str_contains($firstRow[0] ?? '', 'nama') || str_contains($firstRow[0] ?? '', 'name')) {
+            $startIndex = 1;
+        }
+
+        $imported = [];
+        $skipped = [];
+        $defaultAvatars = ["🧒", "👧", "👦", "🧒🏻", "👧🏻", "👦🏻", "🧑‍🦱", "👩‍🦰", "🧑‍🎓"];
+
+        for ($i = $startIndex; $i < count($rows); $i++) {
+            $row = $rows[$i];
+            $name = trim((string)($row[0] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+
+            $avatar = trim((string)($row[1] ?? ''));
+            if (!$avatar || mb_strlen($avatar) > 4) {
+                $avatar = $defaultAvatars[$i % count($defaultAvatars)];
+            }
+
+            $parentEmail = trim((string)($row[2] ?? ''));
+            if ($parentEmail !== '' && !filter_var($parentEmail, FILTER_VALIDATE_EMAIL)) {
+                $parentEmail = null;
+            }
+
+            $exists = Student::where('class_id', $classId)
+                ->where('name', $name)
+                ->exists();
+
+            if ($exists) {
+                $skipped[] = "$name (sudah terdaftar)";
+                continue;
+            }
+
+            $student = Student::create([
+                'class_id'     => $classId,
+                'name'         => $name,
+                'avatar'       => $avatar,
+                'parent_email' => $parentEmail ?: null,
+            ]);
+
+            $imported[] = $student;
+        }
+
+        return response()->json([
+            'success'  => true,
+            'imported' => count($imported),
+            'skipped'  => $skipped,
+            'students' => $imported,
+        ]);
+    }
+
+    /** GET /api/students/template — Unduh template CSV/Excel import siswa */
+    public function downloadTemplate()
+    {
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="template_import_siswa_saptara.csv"',
+            'Pragma'              => 'no-cache',
+            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires'             => '0',
+        ];
+
+        return response()->stream(function () {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
+            fputcsv($handle, ['Nama Siswa', 'Avatar', 'Email Orang Tua']);
+            fputcsv($handle, ['Ahmad Dahlan', '👦', 'ortu.ahmad@gmail.com']);
+            fputcsv($handle, ['Siti Fatimah', '👧', 'ortu.siti@gmail.com']);
+            fputcsv($handle, ['Raden Mas Joko', '🧒', '']);
+            fclose($handle);
+        }, 200, $headers);
+    }
+
     /** DELETE /api/students/{id} */
     public function destroy(int $id)
     {

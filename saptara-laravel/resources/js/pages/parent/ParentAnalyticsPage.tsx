@@ -1,5 +1,6 @@
 import { useParentInfo } from "../../hooks/use-auth";
 import { RadarChart } from "../../components/RadarChart";
+import { HabitHeatmap } from "../../components/HabitHeatmap";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/Card";
 import { BarChart3, Heart, Lightbulb } from "lucide-react";
 
@@ -39,29 +40,29 @@ export function ParentAnalyticsPage() {
         <div className="space-y-4">
           <Card className="border-emerald-100 bg-emerald-50/40">
             <CardHeader className="pb-2">
-              <div className="flex items-center gap-2 text-emerald-900">
-                <Heart className="h-5 w-5 text-emerald-600" />
-                <CardTitle className="font-display text-sm">
-                  Kolaborasi Orang Tua & Sekolah 🤝
+              <div className="flex items-center gap-2 text-emerald-800">
+                <Heart className="h-5 w-5 text-rose-500" />
+                <CardTitle className="font-display text-sm text-emerald-900">
+                  Apresiasi & Kasih Sayang di Rumah
                 </CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="text-xs text-emerald-950 space-y-2 leading-relaxed">
+            <CardContent className="space-y-2 text-xs text-emerald-950 leading-relaxed">
               <p>
-                Kebiasaan baik paling efektif terbentuk jika didukung bersama di rumah.
+                Perilaku baik yang dihargai akan diulang. Pujilah usaha ananda, bukan sekadar hasilnya.
               </p>
               <p>
-                Berikan apresiasi saat ananda berhasil bangun pagi atau merapikan meja belajarnya sendiri. Pujian sederhana seperti <em>"Ayah/Ibu senang melihatmu mandiri hari ini"</em> sangat berharga bagi kepercayaan dirinya.
+                Misalnya: <em>"Bunda bangga melihatmu langsung merapikan tempat tidur sendiri pagi ini tanpa disuruh!"</em>
               </p>
             </CardContent>
           </Card>
 
           <Card className="border-slate-200">
             <CardHeader className="pb-2">
-              <div className="flex items-center gap-2 text-amber-800">
+              <div className="flex items-center gap-2 text-slate-800">
                 <Lightbulb className="h-5 w-5 text-amber-500" />
                 <CardTitle className="font-display text-sm text-slate-800">
-                  Panduan Pendampingan di Rumah
+                  Tips Penguatan Pembiasaan
                 </CardTitle>
               </div>
             </CardHeader>
@@ -88,6 +89,11 @@ export function ParentAnalyticsPage() {
           </Card>
         </div>
       </div>
+
+      {/* Heatmap 60 Hari */}
+      {studentId > 0 && (
+        <HabitHeatmap studentId={studentId} studentName={parentInfo?.studentName} />
+      )}
     </div>
   );
 }
