@@ -14,11 +14,27 @@ import {
 import type { StudentLoginResponse, ParentLoginResponse } from "../types";
 
 export const authService = {
-  // Student Login
-  async studentLogin(name: string, classCode: string): Promise<StudentLoginResponse> {
+  // Student Login (NIS + PIN or legacy name + classCode)
+  async studentLogin(params: {
+    schoolId?: number;
+    nis?: string;
+    accessCode?: string;
+    name?: string;
+    classCode?: string;
+  }): Promise<StudentLoginResponse> {
+    const body: Record<string, any> = {};
+    if (params.schoolId && params.nis) {
+      body.school_id = params.schoolId;
+      body.nis = params.nis;
+      body.access_code = params.accessCode;
+    } else {
+      body.name = params.name;
+      body.classCode = params.classCode;
+    }
+
     const result = await apiFetch<StudentLoginResponse>("/api/auth/student/login", {
       method: "POST",
-      body: JSON.stringify({ name, classCode }),
+      body: JSON.stringify(body),
     });
     setStudentToken(result.token);
     setStudentInfo(result.student);
@@ -30,11 +46,27 @@ export const authService = {
     removeStudentToken();
   },
 
-  // Parent Login (Quick childName + classCode)
-  async parentLogin(studentName: string, classCode: string): Promise<ParentLoginResponse> {
+  // Parent Login (Quick access via NIS + PIN or legacy childName + classCode)
+  async parentLogin(params: {
+    schoolId?: number;
+    nis?: string;
+    accessCode?: string;
+    studentName?: string;
+    classCode?: string;
+  }): Promise<ParentLoginResponse> {
+    const body: Record<string, any> = {};
+    if (params.schoolId && params.nis) {
+      body.school_id = params.schoolId;
+      body.nis = params.nis;
+      body.access_code = params.accessCode;
+    } else {
+      body.name = params.studentName;
+      body.classCode = params.classCode;
+    }
+
     const result = await apiFetch<ParentLoginResponse>("/api/auth/parent/login", {
       method: "POST",
-      body: JSON.stringify({ studentName, classCode }),
+      body: JSON.stringify(body),
     });
     setParentToken(result.token);
     setParentInfo({
@@ -143,7 +175,8 @@ export const authService = {
     email: string,
     password: string,
     passwordConfirmation: string,
-    displayName?: string
+    displayName?: string,
+    schoolId?: number
   ): Promise<{ token: string; teacher: any }> {
     const result = await apiFetch<any>("/api/auth/teacher/register", {
       method: "POST",
@@ -153,6 +186,7 @@ export const authService = {
         password,
         password_confirmation: passwordConfirmation,
         display_name: displayName || name,
+        school_id: schoolId,
       }),
     });
     setTeacherToken(result.token);

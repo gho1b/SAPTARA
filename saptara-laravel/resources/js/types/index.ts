@@ -2,10 +2,29 @@
 // SAPTARA — Shared TypeScript Types
 // ════════════════════════════════════════════
 
+export interface School {
+  id: number;
+  npsn: string;
+  name: string;
+  slug?: string;
+  address?: string;
+  village?: string;
+  district?: string;
+  city?: string;
+  province?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logo?: string | null;
+  isActive?: boolean;
+}
+
 export interface Teacher {
   id: number;
   userId: string;
   displayName: string;
+  schoolId?: number;
+  school?: School;
   createdAt: string;
 }
 
@@ -88,6 +107,10 @@ export interface CreateClassPayload {
 export interface Student {
   id: number;
   classId: number;
+  schoolId?: number;
+  nis?: string;
+  accessCode?: string;
+  access_code?: string;
   name: string;
   avatar: string;
   xp: number;
@@ -101,6 +124,8 @@ export interface CreateStudentPayload {
   classId: number;
   name: string;
   avatar?: string;
+  nis?: string;
+  accessCode?: string;
 }
 
 export interface ShipLevel {

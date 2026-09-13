@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useClasses, useCreateClass } from "../../hooks/use-classes";
-import { useStudentsByClass, useCreateStudent, useDeleteStudent } from "../../hooks/use-students";
+import { useStudentsByClass, useCreateStudent, useDeleteStudent, useResetStudentCode } from "../../hooks/use-students";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -21,6 +21,11 @@ import {
   Loader2,
   Sparkles,
   Ship,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Printer,
+  RefreshCw,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { downloadAuthorizedFile } from "../../lib/download";
@@ -46,14 +51,43 @@ export function CrewPage() {
 
   const createStudentMutation = useCreateStudent();
   const deleteStudentMutation = useDeleteStudent();
+  const resetStudentCodeMutation = useResetStudentCode();
   const createClassMutation = useCreateClass();
 
   // Add student modal state
   const [addStudentModal, setAddStudentModal] = useState(false);
   const [newStudentName, setNewStudentName] = useState("");
+  const [newStudentNis, setNewStudentNis] = useState("");
+  const [newStudentAccessCode, setNewStudentAccessCode] = useState("");
   const [newStudentAvatar, setNewStudentAvatar] = useState(AVATARS[0]);
   const [studentTargetClassId, setStudentTargetClassId] = useState<number>(0);
   const [addStudentError, setAddStudentError] = useState<string | null>(null);
+
+  // Student PIN visibility state
+  const [visibleCodes, setVisibleCodes] = useState<Record<number, boolean>>({});
+  const toggleCodeVisibility = (studentId: number) => {
+    setVisibleCodes((prev) => ({ ...prev, [studentId]: !prev[studentId] }));
+  };
+
+  // Student Card Printing state
+  const [cardModalOpen, setCardModalOpen] = useState(false);
+  const [cardTargetStudent, setCardTargetStudent] = useState<any | null>(null);
+
+  const handleOpenCard = (student: any | null = null) => {
+    setCardTargetStudent(student);
+    setCardModalOpen(true);
+  };
+
+  const handleResetCode = async (studentId: number, studentName: string) => {
+    if (window.confirm(`Reset PIN akses untuk ${studentName}? PIN baru 6-digit acak akan dibuat.`)) {
+      try {
+        const res = await resetStudentCodeMutation.mutateAsync({ id: studentId });
+        alert(`Berhasil! Kode PIN baru untuk ${studentName} adalah: ${res.access_code}`);
+      } catch (err: any) {
+        alert(err.message || "Gagal mereset PIN siswa");
+      }
+    }
+  };
 
   // Add class modal state
   const [addClassModal, setAddClassModal] = useState(false);
@@ -182,6 +216,8 @@ export function CrewPage() {
   const handleOpenAddStudent = () => {
     setAddStudentError(null);
     setNewStudentName("");
+    setNewStudentNis("");
+    setNewStudentAccessCode("");
     setStudentTargetClassId(classId);
     setAddStudentModal(true);
   };
@@ -213,9 +249,13 @@ export function CrewPage() {
         classId: targetId,
         name: newStudentName.trim(),
         avatar: newStudentAvatar,
+        nis: newStudentNis.trim() || undefined,
+        accessCode: newStudentAccessCode.trim() || undefined,
       });
       confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
       setNewStudentName("");
+      setNewStudentNis("");
+      setNewStudentAccessCode("");
       setAddStudentModal(false);
     } catch (err: any) {
       setAddStudentError(err.message || "Gagal menambahkan siswa");
@@ -391,6 +431,18 @@ export function CrewPage() {
               <Button
                 size="sm"
                 variant="outline"
+                onClick={() => handleOpenCard(null)}
+                disabled={!students || students.length === 0}
+                className="gap-1 text-xs text-indigo-700 border-indigo-300 hover:bg-indigo-50"
+                title="Cetak Kartu Akses Seluruh Siswa di Kelas Ini"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                <span>Cetak Kartu Kelas</span>
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => handleExportClassExcel(classId)}
                 disabled={downloading === `class-excel-${classId}` || !classId}
                 className="gap-1 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
@@ -458,12 +510,38 @@ export function CrewPage() {
                 {students.map((student) => (
                   <div
                     key={student.id}
-                    className="flex items-center justify-between py-3 px-2 hover:bg-slate-50/70 rounded-xl transition-colors"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between py-3 px-2 hover:bg-slate-50/70 rounded-xl transition-colors gap-3"
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{student.avatar || "🧒"}</span>
                       <div>
-                        <h4 className="font-bold text-xs text-slate-800">{student.name}</h4>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-bold text-xs text-slate-800">{student.name}</h4>
+                          <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-mono font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                            NIS: {student.nis || "-"}
+                          </span>
+                          <span className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200/70">
+                            <KeyRound className="h-2.5 w-2.5 text-amber-600 inline" />
+                            <span>PIN:</span>
+                            <span className="font-bold tracking-wider">
+                              {visibleCodes[student.id]
+                                ? (student.access_code || student.accessCode || "------")
+                                : "••••••"}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => toggleCodeVisibility(student.id)}
+                              className="text-slate-400 hover:text-slate-700 ml-0.5 cursor-pointer"
+                              title={visibleCodes[student.id] ? "Sembunyikan PIN" : "Lihat PIN"}
+                            >
+                              {visibleCodes[student.id] ? (
+                                <EyeOff className="h-3 w-3 inline" />
+                              ) : (
+                                <Eye className="h-3 w-3 inline" />
+                              )}
+                            </button>
+                          </span>
+                        </div>
                         <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
                           <span>⚡ {student.xp} mil</span>
                           <span>•</span>
@@ -474,7 +552,29 @@ export function CrewPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 self-end sm:self-center">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenCard(student)}
+                        className="h-8 gap-1 text-[11px] text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+                        title="Lihat & Cetak Kartu Akses Siswa"
+                      >
+                        <Printer className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Kartu</span>
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleResetCode(student.id, student.name)}
+                        className="h-8 gap-1 text-[11px] text-amber-700 border-amber-200 hover:bg-amber-50"
+                        title="Reset PIN Siswa ke 6 Digit Baru"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Reset PIN</span>
+                      </Button>
+
                       <Button
                         size="sm"
                         variant="outline"
@@ -488,14 +588,14 @@ export function CrewPage() {
                         ) : (
                           <FileText className="h-3.5 w-3.5" />
                         )}
-                        <span>Raport PDF</span>
+                        <span>Raport</span>
                       </Button>
 
                       <Button
                         size="icon"
                         variant="ghost"
                         onClick={() => handleDeleteStudent(student.id, student.name)}
-                        className="text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                        className="h-8 w-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                         title="Hapus Siswa"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -553,6 +653,31 @@ export function CrewPage() {
               placeholder="Contoh: Siti Aisyah"
               required
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                NIS <span className="text-slate-400 font-normal lowercase">(opsional)</span>
+              </label>
+              <Input
+                value={newStudentNis}
+                onChange={(e) => setNewStudentNis(e.target.value)}
+                placeholder="Buat otomatis jika kosong"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                Kode PIN <span className="text-slate-400 font-normal lowercase">(opsional)</span>
+              </label>
+              <Input
+                value={newStudentAccessCode}
+                onChange={(e) => setNewStudentAccessCode(e.target.value)}
+                placeholder="Acak 6-digit jika kosong"
+                maxLength={20}
+                className="font-mono"
+              />
+            </div>
           </div>
 
           <div>
@@ -739,6 +864,134 @@ export function CrewPage() {
               </Button>
             </div>
           </form>
+        </div>
+      </Dialog>
+
+      {/* Modal Cetak Kartu Akses Siswa */}
+      <Dialog
+        open={cardModalOpen}
+        onClose={() => setCardModalOpen(false)}
+        title="Kartu Akses Siswa SAPTARA 🖨️"
+        description={
+          cardTargetStudent
+            ? `Kartu akses untuk ${cardTargetStudent.name}`
+            : `Menampilkan seluruh kartu akses siswa di kelas ini (${students?.length ?? 0} siswa)`
+        }
+        className="max-w-4xl"
+      >
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-indigo-50 border border-indigo-200 rounded-2xl">
+            <div className="text-xs text-indigo-900">
+              <span className="font-bold block">Petunjuk Cetak:</span>
+              <span>
+                Klik tombol di samping untuk mencetak kartu. Kartu ini dapat digunting dan dibagikan kepada siswa dan wali murid.
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCardModalOpen(false)}
+              >
+                Tutup
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => window.print()}
+                className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+              >
+                <Printer className="h-4 w-4" />
+                <span>Cetak / Print</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Printable Container */}
+          <div
+            id="printable-student-cards"
+            className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto p-1"
+          >
+            {(cardTargetStudent ? [cardTargetStudent] : (students || [])).map((st: any) => (
+              <div
+                key={st.id}
+                className="border-2 border-dashed border-sky-300 rounded-2xl p-4 bg-gradient-to-br from-sky-50/60 via-white to-amber-50/40 shadow-xs relative overflow-hidden flex flex-col justify-between"
+              >
+                {/* Header Card */}
+                <div className="flex items-center justify-between border-b border-sky-100 pb-2.5 mb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">⛵</span>
+                    <div>
+                      <h4 className="font-display font-extrabold text-xs text-sky-900 leading-tight">
+                        {currentClass?.schoolName || currentClass?.school_name || "SAPTARA"}
+                      </h4>
+                      <p className="text-[10px] font-semibold text-sky-600">
+                        Kelas: {currentClass?.classCode || currentClass?.class_code}
+                        {currentClass?.shipName || currentClass?.ship_name
+                          ? ` • Kapal ${currentClass.shipName || currentClass.ship_name}`
+                          : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 bg-white px-2 py-0.5 rounded-full border border-slate-200">
+                    Kartu Akses
+                  </span>
+                </div>
+
+                {/* Body Card */}
+                <div className="flex items-center gap-3.5 mb-3">
+                  <div className="h-12 w-12 rounded-2xl bg-sky-100 flex items-center justify-center text-3xl shrink-0 border border-sky-200 shadow-xs">
+                    {st.avatar || "🧒"}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h5 className="font-bold text-sm text-slate-900 truncate">{st.name}</h5>
+                    <div className="grid grid-cols-2 gap-2 mt-1.5">
+                      <div className="bg-white border border-slate-200 rounded-lg p-1.5 text-center">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">NIS</span>
+                        <span className="font-mono text-xs font-bold text-sky-800">
+                          {st.nis || "-"}
+                        </span>
+                      </div>
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-1.5 text-center">
+                        <span className="text-[9px] font-bold text-amber-700 uppercase block">PIN AKSES</span>
+                        <span className="font-mono text-sm font-extrabold text-amber-900 tracking-wider">
+                          {st.access_code || st.accessCode || "------"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Card */}
+                <div className="border-t border-slate-100 pt-2 text-[9px] text-slate-400 text-center flex items-center justify-between">
+                  <span>🌐 Masuk di saptara.id</span>
+                  <span>🔒 Simpan PIN dengan aman</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <style>{`
+            @media print {
+              body * {
+                visibility: hidden;
+              }
+              #printable-student-cards, #printable-student-cards * {
+                visibility: visible;
+              }
+              #printable-student-cards {
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 100%;
+                max-height: none !important;
+                overflow: visible !important;
+                padding: 1cm;
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 1.5rem !important;
+              }
+            }
+          `}</style>
         </div>
       </Dialog>
     </div>

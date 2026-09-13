@@ -41,6 +41,17 @@ export const studentService = {
         classId: payload.classId,
         name: payload.name,
         avatar: payload.avatar,
+        nis: payload.nis,
+        access_code: payload.accessCode,
+      }),
+    });
+  },
+
+  async resetStudentCode(id: number, accessCode?: string): Promise<{ success: boolean; message: string; access_code: string; student: Student }> {
+    return apiFetch<{ success: boolean; message: string; access_code: string; student: Student }>(`/api/students/${id}/reset-code`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        access_code: accessCode,
       }),
     });
   },

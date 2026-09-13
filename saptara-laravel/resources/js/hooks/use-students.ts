@@ -80,3 +80,14 @@ export function useDeleteStudent() {
     },
   });
 }
+
+export function useResetStudentCode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, accessCode }: { id: number; accessCode?: string }) =>
+      studentService.resetStudentCode(id, accessCode),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+    },
+  });
+}

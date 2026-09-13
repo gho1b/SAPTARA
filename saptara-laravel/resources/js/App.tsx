@@ -20,6 +20,11 @@ import { CrewPage } from "./pages/teacher/CrewPage";
 import { ParentFeedPage } from "./pages/parent/ParentFeedPage";
 import { ParentAnalyticsPage } from "./pages/parent/ParentAnalyticsPage";
 
+import { AdminLoginPage } from "./pages/admin/AdminLoginPage";
+import { AdminLayout } from "./pages/admin/AdminLayout";
+import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
+import { AdminSchoolListPage } from "./pages/admin/AdminSchoolListPage";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -134,6 +139,14 @@ export function App() {
                   </ProtectedRoute>
                 }
               />
+
+              {/* ── Super Admin Routes ── */}
+              <Route path="/admin/login" element={<AdminLoginPage />} />
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="dashboard" element={<AdminDashboardPage />} />
+                <Route path="schools" element={<AdminSchoolListPage />} />
+              </Route>
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Student;
+use App\Models\SchoolClass;
+use App\Models\School;
 use App\Models\HabitCompletion;
 use App\Models\StudentBadge;
 use App\Models\StudentAccessory;
@@ -62,6 +64,13 @@ class StudentController extends Controller
             $existsNis = Student::where('school_id', $schoolId)->where('nis', $nis)->exists();
             if ($existsNis) {
                 return response()->json(['error' => "Siswa dengan NIS \"{$nis}\" sudah terdaftar di sekolah ini!"], 409);
+            }
+        } elseif (!$nis) {
+            $lastId = Student::max('id') ?? 0;
+            $nis = date('Y') . str_pad((string) ($lastId + 1), 4, '0', STR_PAD_LEFT);
+            while (Student::where('school_id', $schoolId)->where('nis', $nis)->exists()) {
+                $lastId++;
+                $nis = date('Y') . str_pad((string) ($lastId + 1), 4, '0', STR_PAD_LEFT);
             }
         }
 
@@ -254,13 +263,19 @@ class StudentController extends Controller
 
         $firstRow = array_map(fn($v) => strtolower(trim((string)$v)), $rows[0]);
         $startIndex = 0;
+        $hasNisColumn = false;
         if (str_contains($firstRow[0] ?? '', 'nama') || str_contains($firstRow[0] ?? '', 'name')) {
             $startIndex = 1;
+            $hasNisColumn = str_contains($firstRow[1] ?? '', 'nis');
         }
+
+        $cls = SchoolClass::find($classId);
+        $schoolId = $cls ? $cls->school_id : null;
 
         $imported = [];
         $skipped = [];
         $defaultAvatars = ["🧒", "👧", "👦", "🧒🏻", "👧🏻", "👦🏻", "🧑‍🦱", "👩‍🦰", "🧑‍🎓"];
+        $lastStudentId = Student::max('id') ?? 0;
 
         for ($i = $startIndex; $i < count($rows); $i++) {
             $row = $rows[$i];
@@ -269,14 +284,44 @@ class StudentController extends Controller
                 continue;
             }
 
-            $avatar = trim((string)($row[1] ?? ''));
+            if ($hasNisColumn) {
+                $nis = trim((string)($row[1] ?? ''));
+                $avatar = trim((string)($row[2] ?? ''));
+                $parentEmail = trim((string)($row[3] ?? ''));
+                $accessCode = trim((string)($row[4] ?? ''));
+            } else {
+                $nis = '';
+                $avatar = trim((string)($row[1] ?? ''));
+                $parentEmail = trim((string)($row[2] ?? ''));
+                $accessCode = '';
+            }
+
             if (!$avatar || mb_strlen($avatar) > 4) {
                 $avatar = $defaultAvatars[$i % count($defaultAvatars)];
             }
 
-            $parentEmail = trim((string)($row[2] ?? ''));
             if ($parentEmail !== '' && !filter_var($parentEmail, FILTER_VALIDATE_EMAIL)) {
                 $parentEmail = null;
+            }
+
+            // NIS handling
+            if ($nis !== '') {
+                if ($schoolId && Student::where('school_id', $schoolId)->where('nis', $nis)->exists()) {
+                    $skipped[] = "$name (NIS $nis sudah terdaftar)";
+                    continue;
+                }
+            } else {
+                $lastStudentId++;
+                $nis = date('Y') . str_pad((string)$lastStudentId, 4, '0', STR_PAD_LEFT);
+                while ($schoolId && Student::where('school_id', $schoolId)->where('nis', $nis)->exists()) {
+                    $lastStudentId++;
+                    $nis = date('Y') . str_pad((string)$lastStudentId, 4, '0', STR_PAD_LEFT);
+                }
+            }
+
+            // PIN handling
+            if ($accessCode === '') {
+                $accessCode = (string) random_int(100000, 999999);
             }
 
             $exists = Student::where('class_id', $classId)
@@ -289,8 +334,11 @@ class StudentController extends Controller
             }
 
             $student = Student::create([
+                'school_id'    => $schoolId,
                 'class_id'     => $classId,
                 'name'         => $name,
+                'nis'          => $nis,
+                'access_code'  => $accessCode,
                 'avatar'       => $avatar,
                 'parent_email' => $parentEmail ?: null,
             ]);
@@ -320,10 +368,10 @@ class StudentController extends Controller
         return response()->stream(function () {
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
-            fputcsv($handle, ['Nama Siswa', 'Avatar', 'Email Orang Tua']);
-            fputcsv($handle, ['Ahmad Dahlan', '👦', 'ortu.ahmad@gmail.com']);
-            fputcsv($handle, ['Siti Fatimah', '👧', 'ortu.siti@gmail.com']);
-            fputcsv($handle, ['Raden Mas Joko', '🧒', '']);
+            fputcsv($handle, ['Nama Siswa', 'NIS', 'Avatar', 'Email Orang Tua', 'Kode PIN (Opsional)']);
+            fputcsv($handle, ['Ahmad Dahlan', '10001', '👦', 'ortu.ahmad@gmail.com', '123456']);
+            fputcsv($handle, ['Siti Fatimah', '10002', '👧', 'ortu.siti@gmail.com', '654321']);
+            fputcsv($handle, ['Raden Mas Joko', '', '🧒', '', '']);
             fclose($handle);
         }, 200, $headers);
     }

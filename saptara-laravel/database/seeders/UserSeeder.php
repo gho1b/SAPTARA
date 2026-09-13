@@ -181,12 +181,19 @@ class UserSeeder extends Seeder
                 $newClassId = SchoolClass::first()->id;
             }
 
+            $targetClass = SchoolClass::find($newClassId);
+            $schoolId = $targetClass?->school_id ?? \App\Models\School::first()?->id;
+            $nis = '100' . str_pad((string)($studentCount + 1), 3, '0', STR_PAD_LEFT);
+
             Student::updateOrCreate(
                 [
                     'name' => $s['name'],
                     'class_id' => $newClassId,
                 ],
                 [
+                    'school_id' => $schoolId,
+                    'nis' => $nis,
+                    'access_code' => '123456',
                     'avatar' => $s['avatar'] ?? '🧒',
                     'xp' => $s['xp'] ?? 0,
                     'coins' => $s['coins'] ?? 0,

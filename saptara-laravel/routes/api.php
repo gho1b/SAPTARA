@@ -12,6 +12,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\QuestController;
 use App\Http\Controllers\ClassMissionController;
 use App\Http\Controllers\SchoolPublicController;
+use App\Http\Controllers\Admin\AdminSchoolController;
 use Illuminate\Support\Facades\Route;
 
 // ── Health check ──────────────────────────────────────────────
@@ -113,3 +114,17 @@ Route::get('/students/{id}/heatmap',                 [StudentController::class, 
 Route::get('/rewards/badges/{studentId}',            [RewardController::class, 'badges']);
 Route::get('/rewards/accessories',                   [RewardController::class, 'accessories']);
 Route::get('/rewards/accessories/{studentId}',       [RewardController::class, 'studentAccessories']);
+
+// ── Super Admin Routes ─────────────────────────────────────────
+Route::post('/admin/login', [AdminSchoolController::class, 'login']);
+
+Route::middleware(['auth:sanctum', 'auth.admin'])->prefix('admin')->group(function () {
+    Route::get('/me',                           [AdminSchoolController::class, 'me']);
+    Route::get('/dashboard/stats',              [AdminSchoolController::class, 'dashboardStats']);
+    Route::get('/schools',                      [AdminSchoolController::class, 'index']);
+    Route::post('/schools',                     [AdminSchoolController::class, 'store']);
+    Route::get('/schools/{id}',                 [AdminSchoolController::class, 'show']);
+    Route::match(['put', 'post'], '/schools/{id}', [AdminSchoolController::class, 'update']);
+    Route::patch('/schools/{id}/toggle-status', [AdminSchoolController::class, 'toggleStatus']);
+    Route::delete('/schools/{id}',              [AdminSchoolController::class, 'destroy']);
+});

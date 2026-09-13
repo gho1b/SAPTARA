@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/auth.service";
+import { schoolService } from "../services/school.service";
+import type { School } from "../types";
 import { useStudentInfo, useTeacherInfo, useParentInfo } from "../hooks/use-auth";
 import { Button } from "../components/ui/Button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
 import { Tabs } from "../components/ui/Tabs";
-import { Sparkles, Ship, GraduationCap, HeartHandshake, Compass, ArrowRight, CheckCircle2, AlertCircle } from "lucide-react";
+import { SchoolSelectCombobox } from "../components/SchoolSelectCombobox";
+import { Sparkles, Ship, GraduationCap, HeartHandshake, Compass, ArrowRight, CheckCircle2, AlertCircle, KeyRound, UserCheck } from "lucide-react";
 
 export function LandingPage() {
   const navigate = useNavigate();
@@ -18,9 +21,12 @@ export function LandingPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // School Multi-Tenant State
+  const [selectedSchool, setSelectedSchool] = useState<School | null>(() => schoolService.getStoredSchool());
+
   // Student Form
-  const [studentName, setStudentName] = useState("");
-  const [studentClassCode, setStudentClassCode] = useState("");
+  const [studentNis, setStudentNis] = useState("");
+  const [studentAccessCode, setStudentAccessCode] = useState("");
 
   // Teacher Form
   const [teacherEmail, setTeacherEmail] = useState("");
@@ -36,8 +42,8 @@ export function LandingPage() {
   const [parentEmail, setParentEmail] = useState("");
   const [parentPassword, setParentPassword] = useState("");
   const [parentPasswordConfirm, setParentPasswordConfirm] = useState("");
-  const [parentChildName, setParentChildName] = useState("");
-  const [parentClassCode, setParentClassCode] = useState("");
+  const [parentChildNis, setParentChildNis] = useState("");
+  const [parentChildAccessCode, setParentChildAccessCode] = useState("");
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -54,17 +60,25 @@ export function LandingPage() {
   const handleStudentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    if (!studentName || !studentClassCode) {
-      setErrorMsg("Harap masukkan nama dan kode kelas");
+    if (!selectedSchool) {
+      setErrorMsg("Harap pilih sekolah asal terlebih dahulu di atas");
+      return;
+    }
+    if (!studentNis.trim() || !studentAccessCode.trim()) {
+      setErrorMsg("Harap masukkan NIS dan Kode PIN Siswa");
       return;
     }
 
     setLoading(true);
     try {
-      await authService.studentLogin(studentName, studentClassCode.toUpperCase());
+      await authService.studentLogin({
+        schoolId: selectedSchool.id,
+        nis: studentNis.trim(),
+        accessCode: studentAccessCode.trim(),
+      });
       navigate("/student/map");
     } catch (err: any) {
-      setErrorMsg(err.message || "Gagal masuk sebagai siswa. Periksa nama & kode kelas.");
+      setErrorMsg(err.message || "Gagal masuk sebagai siswa. Periksa NIS & Kode PIN Anda.");
     } finally {
       setLoading(false);
     }
@@ -82,6 +96,11 @@ export function LandingPage() {
     setLoading(true);
     try {
       if (isTeacherRegister) {
+        if (!selectedSchool) {
+          setErrorMsg("Harap tentukan sekolah tempat Anda bertugas di bagian atas");
+          setLoading(false);
+          return;
+        }
         if (!teacherName.trim()) {
           setErrorMsg("Harap masukkan nama lengkap guru");
           setLoading(false);
@@ -101,7 +120,9 @@ export function LandingPage() {
           teacherName.trim(),
           teacherEmail.trim(),
           teacherPassword,
-          teacherPasswordConfirm
+          teacherPasswordConfirm,
+          teacherName.trim(),
+          selectedSchool.id
         );
       } else {
         await authService.teacherLogin(teacherEmail.trim(), teacherPassword);
@@ -122,12 +143,21 @@ export function LandingPage() {
     setLoading(true);
     try {
       if (parentAuthMode === "quick") {
-        if (!parentChildName.trim() || !parentClassCode.trim()) {
-          setErrorMsg("Harap masukkan nama anak dan kode kelas");
+        if (!selectedSchool) {
+          setErrorMsg("Harap pilih sekolah asal terlebih dahulu di atas");
           setLoading(false);
           return;
         }
-        await authService.parentLogin(parentChildName.trim(), parentClassCode.trim().toUpperCase());
+        if (!parentChildNis.trim() || !parentChildAccessCode.trim()) {
+          setErrorMsg("Harap masukkan NIS dan Kode PIN Siswa (Anak)");
+          setLoading(false);
+          return;
+        }
+        await authService.parentLogin({
+          schoolId: selectedSchool.id,
+          nis: parentChildNis.trim(),
+          accessCode: parentChildAccessCode.trim(),
+        });
       } else {
         if (!parentEmail.trim() || !parentPassword.trim()) {
           setErrorMsg("Harap masukkan email dan password");
@@ -156,8 +186,6 @@ export function LandingPage() {
             email: parentEmail.trim(),
             password: parentPassword,
             passwordConfirmation: parentPasswordConfirm,
-            studentName: parentChildName.trim() || undefined,
-            classCode: parentClassCode.trim().toUpperCase() || undefined,
           });
         } else {
           await authService.parentLoginWithEmail(parentEmail.trim(), parentPassword);
@@ -206,20 +234,40 @@ export function LandingPage() {
           </CardHeader>
 
           <CardContent className="space-y-4">
-            <Tabs
-              activeTab={activeRole}
-              onChange={(id) => {
-                setActiveRole(id);
-                setErrorMsg(null);
-                setTeacherPasswordConfirm("");
-                setParentPasswordConfirm("");
-              }}
-              tabs={[
-                { id: "student", label: "Siswa", icon: <Ship className="h-4 w-4" /> },
-                { id: "teacher", label: "Guru", icon: <GraduationCap className="h-4 w-4" /> },
-                { id: "parent", label: "Orang Tua", icon: <HeartHandshake className="h-4 w-4" /> },
-              ]}
-            />
+            {/* Step 1: School Selector */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                1. Pilih Sekolah Asal
+              </label>
+              <SchoolSelectCombobox
+                selectedSchool={selectedSchool}
+                onSelectSchool={(school) => {
+                  setSelectedSchool(school);
+                  setErrorMsg(null);
+                }}
+              />
+            </div>
+
+            {/* Step 2: Role Tabs */}
+            <div className="space-y-1.5 pt-1">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                2. Pilih Peran & Masuk
+              </label>
+              <Tabs
+                activeTab={activeRole}
+                onChange={(id) => {
+                  setActiveRole(id);
+                  setErrorMsg(null);
+                  setTeacherPasswordConfirm("");
+                  setParentPasswordConfirm("");
+                }}
+                tabs={[
+                  { id: "student", label: "Siswa", icon: <Ship className="h-4 w-4" /> },
+                  { id: "teacher", label: "Guru", icon: <GraduationCap className="h-4 w-4" /> },
+                  { id: "parent", label: "Orang Tua", icon: <HeartHandshake className="h-4 w-4" /> },
+                ]}
+              />
+            </div>
 
             {errorMsg && (
               <div className="flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-semibold text-rose-700 animate-in fade-in">
@@ -233,23 +281,32 @@ export function LandingPage() {
               <form onSubmit={handleStudentSubmit} className="space-y-3 pt-1">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Nama Siswa
+                    Nomor Induk Siswa (NIS)
                   </label>
                   <Input
-                    placeholder="Contoh: Budi Santoso"
-                    value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
+                    placeholder="Contoh: 10482 / 20240101"
+                    value={studentNis}
+                    onChange={(e) => setStudentNis(e.target.value)}
+                    required
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Kode Kelas
+                    Kode PIN Siswa (6 Digit)
                   </label>
                   <Input
-                    placeholder="Contoh: KLS-7A"
-                    value={studentClassCode}
-                    onChange={(e) => setStudentClassCode(e.target.value)}
+                    type="password"
+                    placeholder="Contoh: 849201"
+                    value={studentAccessCode}
+                    onChange={(e) => setStudentAccessCode(e.target.value)}
+                    maxLength={20}
+                    className="font-mono tracking-widest text-center text-base"
+                    required
                   />
+                  <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
+                    <KeyRound className="h-3 w-3 text-amber-500 shrink-0 inline" />
+                    <span>Kode PIN rahasia dibagikan oleh Guru Kelas Anda.</span>
+                  </p>
                 </div>
                 <Button
                   type="submit"
@@ -267,16 +324,28 @@ export function LandingPage() {
             {activeRole === "teacher" && (
               <form onSubmit={handleTeacherSubmit} className="space-y-3 pt-1">
                 {isTeacherRegister && (
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Nama Lengkap Guru
-                    </label>
-                    <Input
-                      placeholder="Nama Lengkap & Gelar"
-                      value={teacherName}
-                      onChange={(e) => setTeacherName(e.target.value)}
-                    />
-                  </div>
+                  <>
+                    <div className="p-2.5 rounded-lg bg-sky-50 border border-sky-200 text-xs text-sky-800">
+                      <p className="font-semibold flex items-center gap-1.5">
+                        <UserCheck className="h-3.5 w-3.5 text-sky-600" />
+                        Pendaftaran Guru untuk Sekolah:
+                      </p>
+                      <p className="font-bold text-slate-900 mt-0.5">
+                        {selectedSchool ? selectedSchool.name : "⚠️ Harap pilih sekolah terlebih dahulu di atas"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Nama Lengkap Guru
+                      </label>
+                      <Input
+                        placeholder="Nama Lengkap & Gelar"
+                        value={teacherName}
+                        onChange={(e) => setTeacherName(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </>
                 )}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
@@ -287,6 +356,7 @@ export function LandingPage() {
                     placeholder="guru@sekolah.sch.id"
                     value={teacherEmail}
                     onChange={(e) => setTeacherEmail(e.target.value)}
+                    required
                   />
                 </div>
                 <div>
@@ -298,6 +368,7 @@ export function LandingPage() {
                     placeholder="••••••••"
                     value={teacherPassword}
                     onChange={(e) => setTeacherPassword(e.target.value)}
+                    required
                   />
                 </div>
                 {isTeacherRegister && (
@@ -380,23 +451,32 @@ export function LandingPage() {
                     <>
                       <div>
                         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                          Nama Lengkap Anak (Siswa)
+                          Nomor Induk Siswa (NIS Anak)
                         </label>
                         <Input
-                          placeholder="Nama anak sesuai data kelas"
-                          value={parentChildName}
-                          onChange={(e) => setParentChildName(e.target.value)}
+                          placeholder="Contoh: 10482 / 20240101"
+                          value={parentChildNis}
+                          onChange={(e) => setParentChildNis(e.target.value)}
+                          required
                         />
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                          Kode Kelas Anak
+                          Kode PIN Siswa (6 Digit)
                         </label>
                         <Input
-                          placeholder="Contoh: KLS-7A"
-                          value={parentClassCode}
-                          onChange={(e) => setParentClassCode(e.target.value)}
+                          type="password"
+                          placeholder="Contoh: 849201"
+                          value={parentChildAccessCode}
+                          onChange={(e) => setParentChildAccessCode(e.target.value)}
+                          maxLength={20}
+                          className="font-mono tracking-widest text-center text-base"
+                          required
                         />
+                        <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
+                          <KeyRound className="h-3 w-3 text-emerald-600 shrink-0 inline" />
+                          <span>Gunakan kode PIN siswa yang tertera pada kartu siswa anak.</span>
+                        </p>
                       </div>
                     </>
                   ) : (
