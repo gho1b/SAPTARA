@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../..
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { AdminSchoolFormModal } from "./AdminSchoolFormModal";
+import { AdminSchoolDetailModal } from "./AdminSchoolDetailModal";
 import {
   Building2,
   Search,
@@ -23,6 +24,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  Eye,
 } from "lucide-react";
 
 export function AdminSchoolListPage() {
@@ -35,6 +37,15 @@ export function AdminSchoolListPage() {
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [schoolToEdit, setSchoolToEdit] = useState<School | null>(null);
+
+  // Detail Modal state
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailSchoolId, setDetailSchoolId] = useState<number | null>(null);
+
+  const handleOpenDetail = (schoolId: number) => {
+    setDetailSchoolId(schoolId);
+    setDetailModalOpen(true);
+  };
 
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [alertMsg, setAlertMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -266,8 +277,12 @@ export function AdminSchoolListPage() {
                   <tr key={sch.id} className="hover:bg-slate-50/70 transition-colors">
                     {/* Sekolah & Logo */}
                     <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs overflow-hidden">
+                      <div
+                        className="flex items-center gap-3 cursor-pointer group"
+                        onClick={() => handleOpenDetail(sch.id)}
+                        title="Klik untuk melihat detail sekolah"
+                      >
+                        <div className="h-10 w-10 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs overflow-hidden group-hover:scale-105 transition-transform">
                           {sch.logo ? (
                             <img src={sch.logo} alt={sch.name} className="h-full w-full object-cover" />
                           ) : (
@@ -275,7 +290,7 @@ export function AdminSchoolListPage() {
                           )}
                         </div>
                         <div>
-                          <span className="font-bold text-slate-900 block text-xs">
+                          <span className="font-bold text-slate-900 block text-xs group-hover:text-sky-600 transition-colors">
                             {sch.name}
                           </span>
                           <span className="text-[10px] text-slate-400 font-mono">
@@ -371,6 +386,17 @@ export function AdminSchoolListPage() {
                         <Button
                           size="sm"
                           variant="outline"
+                          onClick={() => handleOpenDetail(sch.id)}
+                          className="h-8 gap-1 text-xs text-slate-700 border-slate-200 hover:bg-slate-100"
+                          title="Lihat Detail Sekolah"
+                        >
+                          <Eye className="h-3.5 w-3.5 text-slate-500" />
+                          <span className="hidden sm:inline">Detail</span>
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={() => handleOpenEdit(sch)}
                           className="h-8 gap-1 text-xs text-sky-700 border-sky-200 hover:bg-sky-50"
                           title="Edit Data Sekolah"
@@ -463,6 +489,14 @@ export function AdminSchoolListPage() {
         onSuccess={() => {
           fetchSchools();
         }}
+      />
+
+      {/* Modal Detail Sekolah */}
+      <AdminSchoolDetailModal
+        open={detailModalOpen}
+        schoolId={detailSchoolId}
+        onClose={() => setDetailModalOpen(false)}
+        onEdit={(sch) => handleOpenEdit(sch)}
       />
     </div>
   );

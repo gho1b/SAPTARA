@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { authService } from "../services/auth.service";
 import { schoolService } from "../services/school.service";
 import type { School } from "../types";
@@ -623,6 +623,16 @@ export function LandingPage() {
             <span className="text-lg block">🌙</span>
             <span className="text-slate-700">Tidur Tepat Waktu</span>
           </div>
+        </div>
+
+        {/* Admin Backoffice Portal Footer Link */}
+        <div className="mt-8 text-center text-xs">
+          <Link
+            to="/admin/login"
+            className="inline-flex items-center gap-1.5 text-slate-400 hover:text-slate-700 font-medium transition-colors"
+          >
+            <span>⚓ Portal Administrator Platform</span>
+          </Link>
         </div>
       </div>
     </div>
