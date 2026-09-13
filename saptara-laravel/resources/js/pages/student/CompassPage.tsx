@@ -1,6 +1,7 @@
 import { useStudentInfo } from "../../hooks/use-auth";
 import { RadarChart } from "../../components/RadarChart";
 import { HabitHeatmap } from "../../components/HabitHeatmap";
+import { LearningVideos } from "../../components/LearningVideos";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/Card";
 import { Compass, Sparkles, Lightbulb } from "lucide-react";
 
@@ -113,6 +114,9 @@ export function CompassPage() {
           </Card>
         </div>
       </div>
+
+      {/* Menu Video Pembelajaran Karakter (YouTube Embedded - Responsive Mobile) */}
+      <LearningVideos />
 
       {/* Heatmap 60 Hari */}
       {studentId > 0 && (
