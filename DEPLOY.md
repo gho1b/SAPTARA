@@ -138,3 +138,27 @@ Di cPanel → Cron Jobs, tambahkan:
 - [ ] `.htaccess` berfungsi (pretty URLs)
 - [ ] `APP_DEBUG=false` di production
 - [ ] Test endpoint: `GET /api/health` → `{"status": "ok"}`
+
+---
+
+## Otomatisasi CI GitHub: Artefak Produksi Siap Pakai
+
+Sistem telah dilengkapi dengan GitHub Actions Workflow (`.github/workflows/production-artifact.yml`) yang secara otomatis membuat file arsip produksi (`.zip` dan `.tar.gz`) setiap kali tag rilis dibuat di branch `main`.
+
+### Cara Memicu Pembuatan Artefak:
+1. Pastikan seluruh perubahan sudah di-merge ke branch `main`:
+   ```bash
+   git checkout main
+   git pull origin main
+   ```
+2. Buat git tag versi baru:
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+3. GitHub Actions akan secara otomatis:
+   - Memvalidasi bahwa tag berada pada branch `main`.
+   - Mengompilasi aset frontend React & Tailwind via Vite (`public/build/`).
+   - Mengunduh paket Composer produksi (`--no-dev --optimize-autoloader`).
+   - Memaketkan seluruh aplikasi (termasuk `vendor/`, `public/build/`, dan struktur `storage/` bersih) tanpa file development / testing / `.git`.
+   - Mengunggah artefak ke GitHub Actions Artifacts dan membuat GitHub Release dengan lampiran `.zip` & `.tar.gz`.
