@@ -23,6 +23,14 @@ export default defineConfig({
         extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json'],
     },
     server: {
+        ...(process.env.LARAVEL_SAIL ? {
+            host: '0.0.0.0',
+            port: Number(process.env.VITE_PORT || 5173),
+            strictPort: true,
+            hmr: {
+                host: 'localhost',
+            },
+        } : {}),
         watch: {
             ignored: ['**/storage/framework/views/**'],
         },
