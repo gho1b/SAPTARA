@@ -95,12 +95,13 @@ class ParentAuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'name'      => 'required|string|max:255',
-            'email'     => 'required|email|unique:users,email',
-            'password'  => 'required|string|min:6',
-            'phone'     => 'nullable|string',
-            'childName' => 'nullable|string',
-            'classCode' => 'nullable|string',
+            'name'                  => 'required|string|max:255',
+            'email'                 => 'required|email|unique:users,email',
+            'password'              => 'required|string|min:6|confirmed',
+            'password_confirmation' => 'required|string|min:6',
+            'phone'                 => 'nullable|string',
+            'childName'             => 'nullable|string',
+            'classCode'             => 'nullable|string',
         ]);
 
         $user = User::create([

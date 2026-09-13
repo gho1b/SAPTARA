@@ -12,7 +12,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'role'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements JWTSubject
 {
@@ -27,6 +27,21 @@ class User extends Authenticatable implements JWTSubject
         ];
     }
 
+    public function isAdmin(): bool
+    {
+        return ($this->role ?? '') === 'admin';
+    }
+
+    public function isTeacher(): bool
+    {
+        return ($this->role ?? 'teacher') === 'teacher';
+    }
+
+    public function isParent(): bool
+    {
+        return ($this->role ?? '') === 'parent';
+    }
+
     // Required by JWTSubject
     public function getJWTIdentifier(): mixed
     {
@@ -35,7 +50,9 @@ class User extends Authenticatable implements JWTSubject
 
     public function getJWTCustomClaims(): array
     {
-        return [];
+        return [
+            'role' => $this->role ?? 'user',
+        ];
     }
 
     public function teacher(): HasOne

@@ -17,10 +17,11 @@ class TeacherAuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'name'         => 'required|string|max:255',
-            'email'        => 'required|email|unique:users',
-            'password'     => 'required|string|min:8|confirmed',
-            'display_name' => 'required|string|max:255',
+            'name'                  => 'required|string|max:255',
+            'email'                 => 'required|email|unique:users,email',
+            'password'              => 'required|string|min:8|confirmed',
+            'password_confirmation' => 'required|string|min:8',
+            'display_name'          => 'nullable|string|max:255',
         ]);
 
         $user = User::create([
@@ -31,7 +32,7 @@ class TeacherAuthController extends Controller
 
         $teacher = Teacher::create([
             'user_id'      => $user->id,
-            'display_name' => $request->display_name,
+            'display_name' => $request->display_name ?: $request->name,
         ]);
 
         $token = $user->createToken('teacher-token')->plainTextToken;

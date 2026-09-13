@@ -25,6 +25,7 @@ export function LandingPage() {
   // Teacher Form
   const [teacherEmail, setTeacherEmail] = useState("");
   const [teacherPassword, setTeacherPassword] = useState("");
+  const [teacherPasswordConfirm, setTeacherPasswordConfirm] = useState("");
   const [isTeacherRegister, setIsTeacherRegister] = useState(false);
   const [teacherName, setTeacherName] = useState("");
 
@@ -34,6 +35,7 @@ export function LandingPage() {
   const [parentName, setParentName] = useState("");
   const [parentEmail, setParentEmail] = useState("");
   const [parentPassword, setParentPassword] = useState("");
+  const [parentPasswordConfirm, setParentPasswordConfirm] = useState("");
   const [parentChildName, setParentChildName] = useState("");
   const [parentClassCode, setParentClassCode] = useState("");
 
@@ -72,7 +74,7 @@ export function LandingPage() {
   const handleTeacherSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    if (!teacherEmail || !teacherPassword) {
+    if (!teacherEmail.trim() || !teacherPassword) {
       setErrorMsg("Harap isi email dan password");
       return;
     }
@@ -80,14 +82,29 @@ export function LandingPage() {
     setLoading(true);
     try {
       if (isTeacherRegister) {
-        if (!teacherName) {
+        if (!teacherName.trim()) {
           setErrorMsg("Harap masukkan nama lengkap guru");
           setLoading(false);
           return;
         }
-        await authService.teacherRegister(teacherName, teacherEmail, teacherPassword);
+        if (teacherPassword.length < 8) {
+          setErrorMsg("Password minimal 8 karakter");
+          setLoading(false);
+          return;
+        }
+        if (teacherPassword !== teacherPasswordConfirm) {
+          setErrorMsg("Konfirmasi password tidak cocok");
+          setLoading(false);
+          return;
+        }
+        await authService.teacherRegister(
+          teacherName.trim(),
+          teacherEmail.trim(),
+          teacherPassword,
+          teacherPasswordConfirm
+        );
       } else {
-        await authService.teacherLogin(teacherEmail, teacherPassword);
+        await authService.teacherLogin(teacherEmail.trim(), teacherPassword);
       }
       navigate("/teacher/feed");
     } catch (err: any) {
@@ -124,10 +141,21 @@ export function LandingPage() {
             setLoading(false);
             return;
           }
+          if (parentPassword.length < 6) {
+            setErrorMsg("Password minimal 6 karakter");
+            setLoading(false);
+            return;
+          }
+          if (parentPassword !== parentPasswordConfirm) {
+            setErrorMsg("Konfirmasi password tidak cocok");
+            setLoading(false);
+            return;
+          }
           await authService.parentRegister({
             name: parentName.trim(),
             email: parentEmail.trim(),
             password: parentPassword,
+            passwordConfirmation: parentPasswordConfirm,
             studentName: parentChildName.trim() || undefined,
             classCode: parentClassCode.trim().toUpperCase() || undefined,
           });
@@ -183,6 +211,8 @@ export function LandingPage() {
               onChange={(id) => {
                 setActiveRole(id);
                 setErrorMsg(null);
+                setTeacherPasswordConfirm("");
+                setParentPasswordConfirm("");
               }}
               tabs={[
                 { id: "student", label: "Siswa", icon: <Ship className="h-4 w-4" /> },
@@ -261,7 +291,7 @@ export function LandingPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Password
+                    Password {isTeacherRegister && <span className="text-slate-400 font-normal lowercase">(min. 8 karakter)</span>}
                   </label>
                   <Input
                     type="password"
@@ -270,6 +300,20 @@ export function LandingPage() {
                     onChange={(e) => setTeacherPassword(e.target.value)}
                   />
                 </div>
+                {isTeacherRegister && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Konfirmasi Password
+                    </label>
+                    <Input
+                      type="password"
+                      placeholder="Ulangi password"
+                      value={teacherPasswordConfirm}
+                      onChange={(e) => setTeacherPasswordConfirm(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
                 <Button
                   type="submit"
                   variant="primary"
@@ -283,7 +327,11 @@ export function LandingPage() {
                 <div className="text-center pt-1">
                   <button
                     type="button"
-                    onClick={() => setIsTeacherRegister(!isTeacherRegister)}
+                    onClick={() => {
+                      setIsTeacherRegister(!isTeacherRegister);
+                      setTeacherPasswordConfirm("");
+                      setErrorMsg(null);
+                    }}
                     className="text-xs font-semibold text-sky-600 hover:underline cursor-pointer"
                   >
                     {isTeacherRegister ? "Sudah punya akun? Masuk di sini" : "Belum punya akun guru? Daftar di sini"}
@@ -392,6 +440,21 @@ export function LandingPage() {
                       </div>
 
                       {isParentRegister && (
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            Konfirmasi Password
+                          </label>
+                          <Input
+                            type="password"
+                            placeholder="Ulangi password"
+                            value={parentPasswordConfirm}
+                            onChange={(e) => setParentPasswordConfirm(e.target.value)}
+                            required
+                          />
+                        </div>
+                      )}
+
+                      {isParentRegister && (
                         <div className="pt-2 border-t border-slate-100 space-y-2.5">
                           <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
                             Hubungkan Anak Pertama (Opsional):
@@ -418,6 +481,7 @@ export function LandingPage() {
                           type="button"
                           onClick={() => {
                             setIsParentRegister(!isParentRegister);
+                            setParentPasswordConfirm("");
                             setErrorMsg(null);
                           }}
                           className="text-xs text-emerald-700 hover:underline font-semibold"

@@ -65,12 +65,20 @@ export const authService = {
     name: string;
     email: string;
     password: string;
+    passwordConfirmation: string;
     studentName?: string;
     classCode?: string;
   }): Promise<ParentLoginResponse> {
     const result = await apiFetch<ParentLoginResponse>("/api/auth/parent/register", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        name: payload.name,
+        email: payload.email,
+        password: payload.password,
+        password_confirmation: payload.passwordConfirmation,
+        childName: payload.studentName,
+        classCode: payload.classCode,
+      }),
     });
     setParentToken(result.token);
     setParentInfo({
@@ -130,10 +138,22 @@ export const authService = {
   },
 
   // Teacher Register
-  async teacherRegister(name: string, email: string, password: string): Promise<{ token: string; teacher: any }> {
+  async teacherRegister(
+    name: string,
+    email: string,
+    password: string,
+    passwordConfirmation: string,
+    displayName?: string
+  ): Promise<{ token: string; teacher: any }> {
     const result = await apiFetch<any>("/api/auth/teacher/register", {
       method: "POST",
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        password_confirmation: passwordConfirmation,
+        display_name: displayName || name,
+      }),
     });
     setTeacherToken(result.token);
     setTeacherInfo(result.teacher);

@@ -21,8 +21,8 @@ class Student extends Model implements JWTSubject
     }
 
     protected $fillable = [
-        'class_id', 'name', 'avatar',
-        'xp', 'coins', 'streak',
+        'school_id', 'class_id', 'name', 'nis', 'access_code',
+        'avatar', 'xp', 'coins', 'streak',
         'last_active_date', 'parent_email',
     ];
 
@@ -31,16 +31,28 @@ class Student extends Model implements JWTSubject
     ];
 
     protected $appends = [
+        'schoolId',
         'classId',
+        'accessCode',
         'lastActiveDate',
         'parentEmail',
         'ship_level',
         'nautical_miles',
     ];
 
+    public function getSchoolIdAttribute(): ?int
+    {
+        return isset($this->attributes['school_id']) ? (int) $this->attributes['school_id'] : null;
+    }
+
     public function getClassIdAttribute(): int
     {
         return (int) ($this->attributes['class_id'] ?? 0);
+    }
+
+    public function getAccessCodeAttribute(): ?string
+    {
+        return $this->attributes['access_code'] ?? null;
     }
 
     public function getLastActiveDateAttribute(): ?string
@@ -53,6 +65,11 @@ class Student extends Model implements JWTSubject
     public function getParentEmailAttribute(): ?string
     {
         return $this->attributes['parent_email'] ?? null;
+    }
+
+    public function school(): BelongsTo
+    {
+        return $this->belongsTo(School::class);
     }
 
     public function class(): BelongsTo
