@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SchoolClass;
-use App\Models\Student;
 use App\Models\Habit;
 use App\Models\HabitCompletion;
 use App\Models\LogbookEntry;
-use App\Models\StudentBadge;
+use App\Models\SchoolClass;
+use App\Models\Student;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -21,9 +20,9 @@ class ReportController extends Controller
     public function exportStudentPdf(Request $request, int $id)
     {
         $student = Student::with(['class.teacher', 'badges.habit'])->findOrFail($id);
-        $class   = $student->class;
+        $class = $student->class;
         $teacher = $class->teacher;
-        $habits  = Habit::orderBy('id')->get();
+        $habits = Habit::orderBy('id')->get();
 
         // Hitung statistik per habit untuk siswa ini
         $habitStats = [];
@@ -38,7 +37,7 @@ class ReportController extends Controller
                 ->count();
 
             $habitStats[$h->id] = [
-                'completions'   => $completionsCount,
+                'completions' => $completionsCount,
                 'verified_logs' => $verifiedLogsCount,
             ];
         }
@@ -48,16 +47,17 @@ class ReportController extends Controller
             ->count();
 
         $pdf = Pdf::loadView('reports.student_raport', [
-            'student'               => $student,
-            'class'                 => $class,
-            'teacher'               => $teacher,
-            'habits'                => $habits,
-            'habitStats'            => $habitStats,
+            'student' => $student,
+            'class' => $class,
+            'teacher' => $teacher,
+            'habits' => $habits,
+            'habitStats' => $habitStats,
             'verifiedLogbooksCount' => $verifiedLogbooksCount,
-            'badges'                => $student->badges,
+            'badges' => $student->badges,
         ])->setPaper('a4', 'portrait');
 
         $safeName = preg_replace('/[^A-Za-z0-9_\-]/', '_', $student->name);
+
         return $pdf->download("Raport_SAPTARA_{$safeName}.pdf");
     }
 
@@ -80,12 +80,13 @@ class ReportController extends Controller
             ->get();
 
         $pdf = Pdf::loadView('reports.class_summary', [
-            'class'    => $class,
-            'teacher'  => $class->teacher,
+            'class' => $class,
+            'teacher' => $class->teacher,
             'students' => $students,
         ])->setPaper('a4', 'landscape');
 
         $safeClassCode = preg_replace('/[^A-Za-z0-9_\-]/', '_', $class->class_code ?? 'Kelas');
+
         return $pdf->download("Rekap_SAPTARA_{$safeClassCode}.pdf");
     }
 
@@ -108,19 +109,19 @@ class ReportController extends Controller
             ->get();
 
         $safeClassCode = preg_replace('/[^A-Za-z0-9_\-]/', '_', $class->class_code ?? 'Kelas');
-        $filename = "Rekap_Kelas_{$safeClassCode}_" . date('Ymd') . ".csv";
+        $filename = "Rekap_Kelas_{$safeClassCode}_".date('Ymd').'.csv';
 
         $headers = [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"$filename\"",
-            'Pragma'              => 'no-cache',
-            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
-            'Expires'             => '0',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
         ];
 
         return response()->stream(function () use ($class, $students) {
             $handle = fopen('php://output', 'w');
-            
+
             // UTF-8 BOM for Microsoft Excel compatibility
             fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
 
@@ -130,7 +131,7 @@ class ReportController extends Controller
             fputcsv($handle, ['Kelas', $class->class_code ?? $class->classCode]);
             fputcsv($handle, ['Kapal', $class->ship_name ?? $class->shipName ?? 'Saptara']);
             fputcsv($handle, ['Guru Pembina', $class->teacher?->display_name ?? 'Guru Kelas']);
-            fputcsv($handle, ['Tanggal Ekspor', date('d/m/Y H:i') . ' WIB']);
+            fputcsv($handle, ['Tanggal Ekspor', date('d/m/Y H:i').' WIB']);
             fputcsv($handle, []); // Empty row
 
             // Table Headers

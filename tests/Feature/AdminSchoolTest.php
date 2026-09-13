@@ -15,6 +15,7 @@ class AdminSchoolTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $teacherUser;
 
     protected function setUp(): void
@@ -22,22 +23,22 @@ class AdminSchoolTest extends TestCase
         parent::setUp();
 
         $this->admin = User::factory()->create([
-            'email'    => 'admin@saptara.id',
+            'email' => 'admin@saptara.id',
             'password' => bcrypt('admin12345'),
-            'role'     => 'admin',
+            'role' => 'admin',
         ]);
 
         $this->teacherUser = User::factory()->create([
-            'email'    => 'guru@saptara.id',
+            'email' => 'guru@saptara.id',
             'password' => bcrypt('password123'),
-            'role'     => 'teacher',
+            'role' => 'teacher',
         ]);
     }
 
     public function test_admin_login_success()
     {
         $response = $this->postJson('/api/admin/login', [
-            'email'    => 'admin@saptara.id',
+            'email' => 'admin@saptara.id',
             'password' => 'admin12345',
         ]);
 
@@ -48,7 +49,7 @@ class AdminSchoolTest extends TestCase
     public function test_teacher_cannot_login_via_admin_endpoint()
     {
         $response = $this->postJson('/api/admin/login', [
-            'email'    => 'guru@saptara.id',
+            'email' => 'guru@saptara.id',
             'password' => 'password123',
         ]);
 
@@ -68,10 +69,10 @@ class AdminSchoolTest extends TestCase
     public function test_admin_can_view_dashboard_stats()
     {
         $school = School::create([
-            'npsn'      => '11112222',
-            'name'      => 'SMP Negeri 1 Testing',
-            'slug'      => 'smp-negeri-1-testing',
-            'city'      => 'Jakarta Pusat',
+            'npsn' => '11112222',
+            'name' => 'SMP Negeri 1 Testing',
+            'slug' => 'smp-negeri-1-testing',
+            'city' => 'Jakarta Pusat',
             'is_active' => true,
         ]);
 
@@ -92,7 +93,7 @@ class AdminSchoolTest extends TestCase
                 'recent_schools',
             ])
             ->assertJson([
-                'total_schools'  => 1,
+                'total_schools' => 1,
                 'active_schools' => 1,
             ]);
     }
@@ -102,16 +103,16 @@ class AdminSchoolTest extends TestCase
         $token = $this->admin->createToken('admin-token')->plainTextToken;
 
         $payload = [
-            'npsn'      => '87654321',
-            'name'      => 'SMP Bintang Gemilang',
-            'address'   => 'Jl. Bahari No. 10',
-            'village'   => 'Ancol',
-            'district'  => 'Pademangan',
-            'city'      => 'Jakarta Utara',
-            'province'  => 'DKI Jakarta',
-            'phone'     => '021-12345678',
-            'email'     => 'info@bintang-gemilang.sch.id',
-            'website'   => 'https://bintang-gemilang.sch.id',
+            'npsn' => '87654321',
+            'name' => 'SMP Bintang Gemilang',
+            'address' => 'Jl. Bahari No. 10',
+            'village' => 'Ancol',
+            'district' => 'Pademangan',
+            'city' => 'Jakarta Utara',
+            'province' => 'DKI Jakarta',
+            'phone' => '021-12345678',
+            'email' => 'info@bintang-gemilang.sch.id',
+            'website' => 'https://bintang-gemilang.sch.id',
             'is_active' => true,
         ];
 
@@ -132,10 +133,10 @@ class AdminSchoolTest extends TestCase
     public function test_admin_can_update_school()
     {
         $school = School::create([
-            'npsn'      => '12345678',
-            'name'      => 'SMP Awal',
-            'slug'      => 'smp-awal',
-            'city'      => 'Surabaya',
+            'npsn' => '12345678',
+            'name' => 'SMP Awal',
+            'slug' => 'smp-awal',
+            'city' => 'Surabaya',
             'is_active' => true,
         ]);
 
@@ -143,9 +144,9 @@ class AdminSchoolTest extends TestCase
 
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->putJson("/api/admin/schools/{$school->id}", [
-                'npsn'     => '12345678',
-                'name'     => 'SMP Baru Diubah',
-                'city'     => 'Malang',
+                'npsn' => '12345678',
+                'name' => 'SMP Baru Diubah',
+                'city' => 'Malang',
                 'province' => 'Jawa Timur',
             ]);
 
@@ -154,7 +155,7 @@ class AdminSchoolTest extends TestCase
             ->assertJsonPath('school.name', 'SMP Baru Diubah');
 
         $this->assertDatabaseHas('schools', [
-            'id'   => $school->id,
+            'id' => $school->id,
             'name' => 'SMP Baru Diubah',
             'city' => 'Malang',
         ]);
@@ -163,9 +164,9 @@ class AdminSchoolTest extends TestCase
     public function test_admin_can_toggle_school_active_status()
     {
         $school = School::create([
-            'npsn'      => '99887766',
-            'name'      => 'SMP Nonaktifkan Saya',
-            'slug'      => 'smp-nonaktifkan-saya',
+            'npsn' => '99887766',
+            'name' => 'SMP Nonaktifkan Saya',
+            'slug' => 'smp-nonaktifkan-saya',
             'is_active' => true,
         ]);
 
@@ -178,7 +179,7 @@ class AdminSchoolTest extends TestCase
             ->assertJsonPath('is_active', false);
 
         $this->assertDatabaseHas('schools', [
-            'id'        => $school->id,
+            'id' => $school->id,
             'is_active' => false,
         ]);
     }
@@ -186,30 +187,30 @@ class AdminSchoolTest extends TestCase
     public function test_admin_cannot_delete_school_with_students()
     {
         $school = School::create([
-            'npsn'      => '55443322',
-            'name'      => 'SMP Ada Siswa',
-            'slug'      => 'smp-ada-siswa',
+            'npsn' => '55443322',
+            'name' => 'SMP Ada Siswa',
+            'slug' => 'smp-ada-siswa',
             'is_active' => true,
         ]);
 
         $teacher = Teacher::create([
-            'user_id'      => $this->teacherUser->id,
-            'school_id'    => $school->id,
+            'user_id' => $this->teacherUser->id,
+            'school_id' => $school->id,
             'display_name' => 'Pak Guru',
         ]);
 
         $class = SchoolClass::create([
             'teacher_id' => $teacher->id,
-            'school_id'  => $school->id,
+            'school_id' => $school->id,
             'class_code' => 'KLS-9Z',
-            'ship_name'  => 'Kapal Krakatau',
+            'ship_name' => 'Kapal Krakatau',
         ]);
 
         Student::create([
             'school_id' => $school->id,
-            'class_id'  => $class->id,
-            'name'      => 'Budi Testing',
-            'nis'       => '99901',
+            'class_id' => $class->id,
+            'name' => 'Budi Testing',
+            'nis' => '99901',
         ]);
 
         $token = $this->admin->createToken('admin-token')->plainTextToken;

@@ -2,8 +2,8 @@
 
 namespace App\Mail;
 
-use App\Models\Student;
 use App\Models\Habit;
+use App\Models\Student;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;

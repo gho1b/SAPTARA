@@ -18,9 +18,9 @@ class SchoolMultiTenantTest extends TestCase
     public function test_can_create_school_with_auto_slug(): void
     {
         $school = School::create([
-            'npsn'     => '12345678',
-            'name'     => 'SMP Negeri 2 Samudra',
-            'city'     => 'Kota Jakarta Pusat',
+            'npsn' => '12345678',
+            'name' => 'SMP Negeri 2 Samudra',
+            'city' => 'Kota Jakarta Pusat',
             'province' => 'DKI Jakarta',
         ]);
 
@@ -39,32 +39,32 @@ class SchoolMultiTenantTest extends TestCase
         ]);
 
         $user = User::create([
-            'name'     => 'Guru Siti',
-            'email'    => 'siti@bahari.sch.id',
+            'name' => 'Guru Siti',
+            'email' => 'siti@bahari.sch.id',
             'password' => bcrypt('password123'),
-            'role'     => 'teacher',
+            'role' => 'teacher',
         ]);
 
         $teacher = Teacher::create([
-            'user_id'      => $user->id,
-            'school_id'    => $school->id,
+            'user_id' => $user->id,
+            'school_id' => $school->id,
             'display_name' => 'Bu Siti',
         ]);
 
         $class = SchoolClass::create([
-            'teacher_id'  => $teacher->id,
-            'school_id'   => $school->id,
-            'class_code'  => '7A',
+            'teacher_id' => $teacher->id,
+            'school_id' => $school->id,
+            'class_code' => '7A',
             'school_name' => $school->name,
-            'ship_name'   => 'KRI Bahari',
+            'ship_name' => 'KRI Bahari',
         ]);
 
         $student = Student::create([
-            'school_id'   => $school->id,
-            'class_id'    => $class->id,
-            'nis'         => '1001',
+            'school_id' => $school->id,
+            'class_id' => $class->id,
+            'nis' => '1001',
             'access_code' => '123456',
-            'name'        => 'Ahmad Bahari',
+            'name' => 'Ahmad Bahari',
         ]);
 
         $this->assertTrue($school->teachers->contains($teacher));
@@ -86,16 +86,16 @@ class SchoolMultiTenantTest extends TestCase
         // Same NIS in DIFFERENT schools should SUCCEED
         $studentA = Student::create([
             'school_id' => $schoolA->id,
-            'class_id'  => $classA->id,
-            'nis'       => '202401',
-            'name'      => 'Siswa A',
+            'class_id' => $classA->id,
+            'nis' => '202401',
+            'name' => 'Siswa A',
         ]);
 
         $studentB = Student::create([
             'school_id' => $schoolB->id,
-            'class_id'  => $classB->id,
-            'nis'       => '202401',
-            'name'      => 'Siswa B',
+            'class_id' => $classB->id,
+            'nis' => '202401',
+            'name' => 'Siswa B',
         ]);
 
         $this->assertNotNull($studentA->id);
@@ -105,9 +105,9 @@ class SchoolMultiTenantTest extends TestCase
         $this->expectException(QueryException::class);
         Student::create([
             'school_id' => $schoolA->id,
-            'class_id'  => $classA->id,
-            'nis'       => '202401',
-            'name'      => 'Siswa Duplicate',
+            'class_id' => $classA->id,
+            'nis' => '202401',
+            'name' => 'Siswa Duplicate',
         ]);
     }
 

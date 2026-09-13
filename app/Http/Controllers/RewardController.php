@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\StudentBadge;
-use App\Models\StudentAccessory;
-use App\Models\Student;
+use App\Mail\BadgeAwardedMail;
 use App\Models\Habit;
 use App\Models\LogbookEntry;
+use App\Models\Student;
+use App\Models\StudentAccessory;
+use App\Models\StudentBadge;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class RewardController extends Controller
 {
@@ -21,7 +24,7 @@ class RewardController extends Controller
         ['id' => 'meriam',      'name' => 'Meriam Konfeti',        'icon' => '🎆', 'price' => 100, 'type' => 'weapon'],
         ['id' => 'telescope',   'name' => 'Teropong Ajaib',        'icon' => '🔭', 'price' => 60,  'type' => 'tool'],
         ['id' => 'anchor-gold', 'name' => 'Jangkar Emas',          'icon' => '⚓', 'price' => 120, 'type' => 'anchor'],
-        ['id' => 'parrot',      'name' => 'Burung Nuri Pendamping','icon' => '🦜', 'price' => 90,  'type' => 'pet'],
+        ['id' => 'parrot',      'name' => 'Burung Nuri Pendamping', 'icon' => '🦜', 'price' => 90,  'type' => 'pet'],
     ];
 
     /** GET /api/rewards/badges/{studentId} */
@@ -30,12 +33,12 @@ class RewardController extends Controller
         $badges = StudentBadge::with('habit')
             ->where('student_id', $studentId)
             ->get()
-            ->map(fn($b) => [
-                'id'         => $b->id,
-                'habit_id'   => $b->habit_id,
+            ->map(fn ($b) => [
+                'id' => $b->id,
+                'habit_id' => $b->habit_id,
                 'awarded_at' => $b->awarded_at,
                 'habit_name' => $b->habit?->badge,
-                'badge'      => $b->habit?->badge,
+                'badge' => $b->habit?->badge,
                 'badge_icon' => $b->habit?->badge_icon,
             ]);
 
@@ -54,7 +57,7 @@ class RewardController extends Controller
 
         $request->validate([
             'student_id' => 'required|integer|exists:students,id',
-            'habit_id'   => 'required|integer|exists:habits,id',
+            'habit_id' => 'required|integer|exists:habits,id',
         ]);
 
         $exists = StudentBadge::where('student_id', $request->student_id)
@@ -66,9 +69,9 @@ class RewardController extends Controller
         }
 
         $badge = StudentBadge::create([
-            'student_id'           => $request->student_id,
-            'habit_id'             => $request->habit_id,
-            'awarded_by_teacher_id'=> $request->_teacher->id,
+            'student_id' => $request->student_id,
+            'habit_id' => $request->habit_id,
+            'awarded_by_teacher_id' => $request->_teacher->id,
         ]);
 
         $habit = Habit::find($request->habit_id);
@@ -77,13 +80,13 @@ class RewardController extends Controller
         // Notifikasi email otomatis ke orang tua jika parent_email tersedia
         try {
             $student = Student::with('class')->find($request->student_id);
-            if ($student && $habit && !empty($student->parent_email)) {
-                \Illuminate\Support\Facades\Mail::to($student->parent_email)->send(
-                    new \App\Mail\BadgeAwardedMail($student, $habit)
+            if ($student && $habit && ! empty($student->parent_email)) {
+                Mail::to($student->parent_email)->send(
+                    new BadgeAwardedMail($student, $habit)
                 );
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning("Gagal mengirim email piagam: " . $e->getMessage());
+            Log::warning('Gagal mengirim email piagam: '.$e->getMessage());
         }
 
         return response()->json(array_merge($badge->toArray(), ['badge_name' => $habitName]), 201);
@@ -101,7 +104,7 @@ class RewardController extends Controller
         $ownedIds = StudentAccessory::where('student_id', $studentId)->pluck('accessory_id');
 
         $list = array_map(
-            fn($acc) => array_merge($acc, ['owned' => $ownedIds->contains($acc['id'])]),
+            fn ($acc) => array_merge($acc, ['owned' => $ownedIds->contains($acc['id'])]),
             self::$ACCESSORIES
         );
 
@@ -141,7 +144,7 @@ class RewardController extends Controller
         $student->decrement('coins', $acc['price']);
 
         $purchased = StudentAccessory::create([
-            'student_id'   => $studentId,
+            'student_id' => $studentId,
             'accessory_id' => $request->accessory_id,
         ]);
 
@@ -157,23 +160,23 @@ class RewardController extends Controller
 
         $request->validate([
             'student_id' => 'required|integer|exists:students,id',
-            'comment'    => 'required|string',
-            'sticker'    => 'nullable|string',
+            'comment' => 'required|string',
+            'sticker' => 'nullable|string',
         ]);
 
         $now = Carbon::now('Asia/Jakarta');
 
         $entry = LogbookEntry::create([
-            'student_id'             => $request->student_id,
-            'habit_id'               => 1,
-            'date'                   => $now->toDateString(),
-            'time'                   => $now->toTimeString(),
-            'caption'                => 'Pesan dari Guru',
-            'status'                 => 'verified',
+            'student_id' => $request->student_id,
+            'habit_id' => 1,
+            'date' => $now->toDateString(),
+            'time' => $now->toTimeString(),
+            'caption' => 'Pesan dari Guru',
+            'status' => 'verified',
             'reviewed_by_teacher_id' => $request->_teacher->id,
-            'teacher_comment'        => $request->comment,
-            'teacher_sticker'        => $request->sticker ?? '🪙',
-            'xp_earned'              => 10,
+            'teacher_comment' => $request->comment,
+            'teacher_sticker' => $request->sticker ?? '🪙',
+            'xp_earned' => 10,
         ]);
 
         Student::where('id', $request->student_id)->increment('xp', 10);

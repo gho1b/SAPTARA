@@ -11,7 +11,6 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class SchoolAdminController extends Controller
 {
@@ -47,14 +46,14 @@ class SchoolAdminController extends Controller
 
         return response()->json([
             'school' => $school,
-            'stats'  => [
-                'total_teachers'        => $school->teachers_count,
-                'total_classes'         => $school->classes_count,
-                'total_students'        => $school->students_count,
-                'linked_parents_count'  => $linkedParentsCount,
+            'stats' => [
+                'total_teachers' => $school->teachers_count,
+                'total_classes' => $school->classes_count,
+                'total_students' => $school->students_count,
+                'linked_parents_count' => $linkedParentsCount,
             ],
             'recent_students' => $recentStudents,
-            'classes'         => $classes,
+            'classes' => $classes,
         ]);
     }
 
@@ -64,6 +63,7 @@ class SchoolAdminController extends Controller
     public function getProfile(Request $request)
     {
         $school = School::findOrFail($this->getSchoolId($request));
+
         return response()->json($school);
     }
 
@@ -75,16 +75,16 @@ class SchoolAdminController extends Controller
         $school = School::findOrFail($this->getSchoolId($request));
 
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'address'  => 'nullable|string',
-            'village'  => 'nullable|string|max:100',
+            'name' => 'required|string|max:255',
+            'address' => 'nullable|string',
+            'village' => 'nullable|string|max:100',
             'district' => 'nullable|string|max:100',
-            'city'     => 'nullable|string|max:100',
+            'city' => 'nullable|string|max:100',
             'province' => 'nullable|string|max:100',
-            'phone'    => 'nullable|string|max:50',
-            'email'    => 'nullable|email|max:100',
-            'website'  => 'nullable|string|max:255',
-            'logo'     => 'nullable',
+            'phone' => 'nullable|string|max:50',
+            'email' => 'nullable|email|max:100',
+            'website' => 'nullable|string|max:255',
+            'logo' => 'nullable',
         ]);
 
         $logoPath = $school->logo;
@@ -96,22 +96,22 @@ class SchoolAdminController extends Controller
         }
 
         $school->update([
-            'name'     => $request->name,
-            'address'  => $request->address,
-            'village'  => $request->village,
+            'name' => $request->name,
+            'address' => $request->address,
+            'village' => $request->village,
             'district' => $request->district,
-            'city'     => $request->city,
+            'city' => $request->city,
             'province' => $request->province,
-            'phone'    => $request->phone,
-            'email'    => $request->email,
-            'website'  => $request->website,
-            'logo'     => $logoPath,
+            'phone' => $request->phone,
+            'email' => $request->email,
+            'website' => $request->website,
+            'logo' => $logoPath,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Profil sekolah berhasil diperbarui.',
-            'school'  => $school,
+            'school' => $school,
         ]);
     }
 
@@ -138,24 +138,24 @@ class SchoolAdminController extends Controller
         $schoolId = $this->getSchoolId($request);
 
         $request->validate([
-            'name'         => 'required|string|max:255',
-            'email'        => 'required|email|unique:users,email',
-            'password'     => 'required|string|min:6',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6',
             'display_name' => 'nullable|string|max:255',
         ]);
 
         $user = User::create([
-            'name'              => $request->name,
-            'email'             => $request->email,
-            'password'          => Hash::make($request->password),
-            'role'              => 'teacher',
-            'school_id'         => $schoolId,
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => 'teacher',
+            'school_id' => $schoolId,
             'email_verified_at' => now(),
         ]);
 
         $teacher = Teacher::create([
-            'user_id'      => $user->id,
-            'school_id'    => $schoolId,
+            'user_id' => $user->id,
+            'school_id' => $schoolId,
             'display_name' => $request->display_name ?: $request->name,
         ]);
 
@@ -242,26 +242,26 @@ class SchoolAdminController extends Controller
         $school = School::findOrFail($schoolId);
 
         $request->validate([
-            'class_code'   => 'required|string|max:50',
-            'ship_name'    => 'nullable|string|max:100',
-            'teacher_id'   => 'required|integer|exists:teachers,id',
-            'semester'     => 'nullable|string|max:20',
+            'class_code' => 'required|string|max:50',
+            'ship_name' => 'nullable|string|max:100',
+            'teacher_id' => 'required|integer|exists:teachers,id',
+            'semester' => 'nullable|string|max:20',
             'tahun_ajaran' => 'nullable|string|max:30',
         ]);
 
         // Verify teacher belongs to this school
         $teacher = Teacher::where('school_id', $schoolId)->where('id', $request->teacher_id)->first();
-        if (!$teacher) {
+        if (! $teacher) {
             return response()->json(['error' => 'Guru yang dipilih bukan dewan guru dari sekolah ini.'], 422);
         }
 
         $class = SchoolClass::create([
-            'teacher_id'   => $teacher->id,
-            'school_id'    => $schoolId,
-            'school_name'  => $school->name,
-            'class_code'   => $request->class_code,
-            'ship_name'    => $request->ship_name ?: "KRI {$request->class_code}",
-            'semester'     => $request->semester ?: 'Ganjil',
+            'teacher_id' => $teacher->id,
+            'school_id' => $schoolId,
+            'school_name' => $school->name,
+            'class_code' => $request->class_code,
+            'ship_name' => $request->ship_name ?: "KRI {$request->class_code}",
+            'semester' => $request->semester ?: 'Ganjil',
             'tahun_ajaran' => $request->tahun_ajaran ?: '2026/2027',
         ]);
 
@@ -270,7 +270,7 @@ class SchoolAdminController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Kelas {$class->class_code} berhasil dibuat!",
-            'class'   => $class,
+            'class' => $class,
         ], 201);
     }
 
@@ -283,24 +283,24 @@ class SchoolAdminController extends Controller
         $class = SchoolClass::where('school_id', $schoolId)->where('id', $id)->firstOrFail();
 
         $request->validate([
-            'class_code'   => 'required|string|max:50',
-            'ship_name'    => 'nullable|string|max:100',
-            'teacher_id'   => 'required|integer|exists:teachers,id',
-            'semester'     => 'nullable|string|max:20',
+            'class_code' => 'required|string|max:50',
+            'ship_name' => 'nullable|string|max:100',
+            'teacher_id' => 'required|integer|exists:teachers,id',
+            'semester' => 'nullable|string|max:20',
             'tahun_ajaran' => 'nullable|string|max:30',
         ]);
 
         // Verify teacher belongs to this school
         $teacher = Teacher::where('school_id', $schoolId)->where('id', $request->teacher_id)->first();
-        if (!$teacher) {
+        if (! $teacher) {
             return response()->json(['error' => 'Guru yang dipilih bukan dewan guru dari sekolah ini.'], 422);
         }
 
         $class->update([
-            'class_code'   => $request->class_code,
-            'ship_name'    => $request->ship_name ?: $class->ship_name,
-            'teacher_id'   => $teacher->id,
-            'semester'     => $request->semester ?: $class->semester,
+            'class_code' => $request->class_code,
+            'ship_name' => $request->ship_name ?: $class->ship_name,
+            'teacher_id' => $teacher->id,
+            'semester' => $request->semester ?: $class->semester,
             'tahun_ajaran' => $request->tahun_ajaran ?: $class->tahun_ajaran,
         ]);
 
@@ -309,7 +309,7 @@ class SchoolAdminController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Data kelas {$class->class_code} berhasil diperbarui!",
-            'class'   => $class,
+            'class' => $class,
         ]);
     }
 
@@ -351,7 +351,7 @@ class SchoolAdminController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('nis', 'like', "%{$search}%");
+                    ->orWhere('nis', 'like', "%{$search}%");
             });
         }
 
@@ -369,17 +369,17 @@ class SchoolAdminController extends Controller
         $schoolId = $this->getSchoolId($request);
 
         $request->validate([
-            'class_id'     => 'required|integer|exists:classes,id',
-            'name'         => 'required|string|max:255',
-            'nis'          => 'nullable|string|max:50',
-            'access_code'  => 'nullable|string|max:20',
-            'avatar'       => 'nullable|string',
+            'class_id' => 'required|integer|exists:classes,id',
+            'name' => 'required|string|max:255',
+            'nis' => 'nullable|string|max:50',
+            'access_code' => 'nullable|string|max:20',
+            'avatar' => 'nullable|string',
             'parent_email' => 'nullable|email|max:100',
         ]);
 
         // Verify class belongs to this school
         $class = SchoolClass::where('school_id', $schoolId)->where('id', $request->class_id)->first();
-        if (!$class) {
+        if (! $class) {
             return response()->json(['error' => 'Kelas yang dipilih tidak terdaftar di sekolah ini.'], 422);
         }
 
@@ -394,16 +394,16 @@ class SchoolAdminController extends Controller
         $accessCode = $request->filled('access_code') ? trim($request->access_code) : (string) rand(100000, 999999);
 
         $student = Student::create([
-            'school_id'    => $schoolId,
-            'class_id'     => $class->id,
-            'name'         => $request->name,
-            'nis'          => $nis,
-            'access_code'  => $accessCode,
-            'avatar'       => $request->avatar ?: '🦊',
+            'school_id' => $schoolId,
+            'class_id' => $class->id,
+            'name' => $request->name,
+            'nis' => $nis,
+            'access_code' => $accessCode,
+            'avatar' => $request->avatar ?: '🦊',
             'parent_email' => $request->parent_email,
-            'xp'           => 0,
-            'coins'        => 0,
-            'streak'       => 0,
+            'xp' => 0,
+            'coins' => 0,
+            'streak' => 0,
         ]);
 
         $student->load('schoolClass');
@@ -424,17 +424,17 @@ class SchoolAdminController extends Controller
         $student = Student::where('school_id', $schoolId)->where('id', $id)->firstOrFail();
 
         $request->validate([
-            'name'         => 'sometimes|required|string|max:255',
-            'class_id'     => 'sometimes|required|integer|exists:classes,id',
-            'nis'          => 'nullable|string|max:50',
-            'access_code'  => 'nullable|string|max:20',
-            'avatar'       => 'nullable|string',
+            'name' => 'sometimes|required|string|max:255',
+            'class_id' => 'sometimes|required|integer|exists:classes,id',
+            'nis' => 'nullable|string|max:50',
+            'access_code' => 'nullable|string|max:20',
+            'avatar' => 'nullable|string',
             'parent_email' => 'nullable|email|max:100',
         ]);
 
         if ($request->filled('class_id')) {
             $class = SchoolClass::where('school_id', $schoolId)->where('id', $request->class_id)->first();
-            if (!$class) {
+            if (! $class) {
                 return response()->json(['error' => 'Kelas tidak valid di sekolah ini.'], 422);
             }
             $student->class_id = $class->id;
@@ -487,8 +487,8 @@ class SchoolAdminController extends Controller
         $student->update(['access_code' => $newCode]);
 
         return response()->json([
-            'success'     => true,
-            'message'     => "PIN akses baru untuk {$student->name} berhasil dibuat!",
+            'success' => true,
+            'message' => "PIN akses baru untuk {$student->name} berhasil dibuat!",
             'access_code' => $newCode,
         ]);
     }
@@ -533,7 +533,7 @@ class SchoolAdminController extends Controller
         $schoolId = $this->getSchoolId($request);
 
         $request->validate([
-            'student_id'   => 'required|integer|exists:students,id',
+            'student_id' => 'required|integer|exists:students,id',
             'parent_email' => 'required|email|max:100',
         ]);
 
@@ -549,4 +549,3 @@ class SchoolAdminController extends Controller
         ]);
     }
 }
-

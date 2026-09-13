@@ -24,9 +24,9 @@ class ClassMission extends Model
     ];
 
     protected $casts = [
-        'is_active'   => 'boolean',
-        'start_date'  => 'date',
-        'end_date'    => 'date',
+        'is_active' => 'boolean',
+        'start_date' => 'date',
+        'end_date' => 'date',
         'target_count' => 'integer',
         'reward_xp_each' => 'integer',
         'reward_coins_each' => 'integer',

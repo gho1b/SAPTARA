@@ -37,7 +37,7 @@ class School extends Model
         static::creating(function (School $school) {
             if (empty($school->slug)) {
                 $base = Str::slug($school->name);
-                $school->slug = $base . '-' . strtolower($school->npsn ?: Str::random(5));
+                $school->slug = $base.'-'.strtolower($school->npsn ?: Str::random(5));
             }
         });
     }
@@ -74,16 +74,15 @@ class School extends Model
 
     public function scopeSearch(Builder $query, ?string $search): Builder
     {
-        if (!empty($search)) {
+        if (! empty($search)) {
             $query->where(function (Builder $q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('npsn', 'like', "%{$search}%")
-                  ->orWhere('city', 'like', "%{$search}%")
-                  ->orWhere('district', 'like', "%{$search}%");
+                    ->orWhere('npsn', 'like', "%{$search}%")
+                    ->orWhere('city', 'like', "%{$search}%")
+                    ->orWhere('district', 'like', "%{$search}%");
             });
         }
 
         return $query;
     }
 }
-

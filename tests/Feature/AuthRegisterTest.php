@@ -12,9 +12,9 @@ class AuthRegisterTest extends TestCase
     public function test_teacher_register_successful_with_password_confirmation(): void
     {
         $response = $this->postJson('/api/auth/teacher/register', [
-            'name'                  => 'Guru Budi',
-            'email'                 => 'guru.budi@test.com',
-            'password'              => 'password123',
+            'name' => 'Guru Budi',
+            'email' => 'guru.budi@test.com',
+            'password' => 'password123',
             'password_confirmation' => 'password123',
         ]);
 
@@ -27,7 +27,7 @@ class AuthRegisterTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'email' => 'guru.budi@test.com',
-            'name'  => 'Guru Budi',
+            'name' => 'Guru Budi',
         ]);
 
         $this->assertDatabaseHas('teachers', [
@@ -38,9 +38,9 @@ class AuthRegisterTest extends TestCase
     public function test_teacher_register_fails_if_password_confirmation_mismatch(): void
     {
         $response = $this->postJson('/api/auth/teacher/register', [
-            'name'                  => 'Guru Budi',
-            'email'                 => 'guru.budi@test.com',
-            'password'              => 'password123',
+            'name' => 'Guru Budi',
+            'email' => 'guru.budi@test.com',
+            'password' => 'password123',
             'password_confirmation' => 'different_password',
         ]);
 
@@ -51,9 +51,9 @@ class AuthRegisterTest extends TestCase
     public function test_parent_register_successful_with_password_confirmation(): void
     {
         $response = $this->postJson('/api/auth/parent/register', [
-            'name'                  => 'Orang Tua Budi',
-            'email'                 => 'ortu.budi@test.com',
-            'password'              => 'secret123',
+            'name' => 'Orang Tua Budi',
+            'email' => 'ortu.budi@test.com',
+            'password' => 'secret123',
             'password_confirmation' => 'secret123',
         ]);
 
@@ -75,9 +75,9 @@ class AuthRegisterTest extends TestCase
     public function test_parent_register_fails_if_password_confirmation_mismatch(): void
     {
         $response = $this->postJson('/api/auth/parent/register', [
-            'name'                  => 'Orang Tua Budi',
-            'email'                 => 'ortu.budi@test.com',
-            'password'              => 'secret123',
+            'name' => 'Orang Tua Budi',
+            'email' => 'ortu.budi@test.com',
+            'password' => 'secret123',
             'password_confirmation' => 'mismatch123',
         ]);
 
@@ -85,4 +85,3 @@ class AuthRegisterTest extends TestCase
             ->assertJsonValidationErrors(['password']);
     }
 }
-

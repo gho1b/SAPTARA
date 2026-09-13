@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
@@ -113,10 +114,17 @@ class Student extends Model implements JWTSubject
     public function getShipLevelAttribute(): array
     {
         $xp = $this->xp;
-        if ($xp >= 600) return ['level' => 4, 'name' => 'Kapten Saptara',    'emoji' => '🚢', 'minXP' => 600,  'maxXP' => 1000, 'ship' => 'saptara'];
-        if ($xp >= 300) return ['level' => 3, 'name' => 'Kapal Pinisi',      'emoji' => '⛵', 'minXP' => 300,  'maxXP' => 600,  'ship' => 'pinisi'];
-        if ($xp >= 100) return ['level' => 2, 'name' => 'Sampan Dayung',     'emoji' => '🚣', 'minXP' => 100,  'maxXP' => 300,  'ship' => 'rowboat'];
-        return               ['level' => 1, 'name' => 'Rakit Bambu',      'emoji' => '🪵', 'minXP' => 0,    'maxXP' => 100,  'ship' => 'raft'];
+        if ($xp >= 600) {
+            return ['level' => 4, 'name' => 'Kapten Saptara',    'emoji' => '🚢', 'minXP' => 600,  'maxXP' => 1000, 'ship' => 'saptara'];
+        }
+        if ($xp >= 300) {
+            return ['level' => 3, 'name' => 'Kapal Pinisi',      'emoji' => '⛵', 'minXP' => 300,  'maxXP' => 600,  'ship' => 'pinisi'];
+        }
+        if ($xp >= 100) {
+            return ['level' => 2, 'name' => 'Sampan Dayung',     'emoji' => '🚣', 'minXP' => 100,  'maxXP' => 300,  'ship' => 'rowboat'];
+        }
+
+        return ['level' => 1, 'name' => 'Rakit Bambu',      'emoji' => '🪵', 'minXP' => 0,    'maxXP' => 100,  'ship' => 'raft'];
     }
 
     public function getNauticalMilesAttribute(): int
@@ -124,18 +132,18 @@ class Student extends Model implements JWTSubject
         return (int) $this->xp;
     }
 
-    public function parents(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function parents(): BelongsToMany
     {
         return $this->belongsToMany(ParentProfile::class, 'parent_student', 'student_id', 'parent_id')
             ->withTimestamps();
     }
 
-    public function questClaims(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function questClaims(): HasMany
     {
         return $this->hasMany(StudentDailyQuestClaim::class);
     }
 
-    public function classMissionClaims(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function classMissionClaims(): HasMany
     {
         return $this->hasMany(ClassMissionClaim::class, 'student_id');
     }

@@ -17,7 +17,7 @@ class ClassMissionClaim extends Model
     ];
 
     protected $casts = [
-        'reward_xp'    => 'integer',
+        'reward_xp' => 'integer',
         'reward_coins' => 'integer',
     ];
 

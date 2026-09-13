@@ -142,16 +142,16 @@ class QuestController extends Controller
             }
         }
 
-        if (!$isEligible) {
+        if (! $isEligible) {
             return response()->json(['error' => 'Target misi belum tercapai.'], 400);
         }
 
         // Catat klaim
         StudentDailyQuestClaim::create([
-            'student_id'   => $student->id,
-            'quest_key'    => $questKey,
-            'date'         => $today,
-            'reward_xp'    => $rewardXp,
+            'student_id' => $student->id,
+            'quest_key' => $questKey,
+            'date' => $today,
+            'reward_xp' => $rewardXp,
             'reward_coins' => $rewardCoins,
         ]);
 
@@ -161,12 +161,12 @@ class QuestController extends Controller
         $student->refresh();
 
         return response()->json([
-            'message'     => 'Hadiah misi berhasil diklaim!',
-            'quest_key'   => $questKey,
-            'rewardXp'    => $rewardXp,
+            'message' => 'Hadiah misi berhasil diklaim!',
+            'quest_key' => $questKey,
+            'rewardXp' => $rewardXp,
             'rewardCoins' => $rewardCoins,
-            'student'     => [
-                'xp'    => $student->xp,
+            'student' => [
+                'xp' => $student->xp,
                 'coins' => $student->coins,
                 'level' => $student->level,
             ],

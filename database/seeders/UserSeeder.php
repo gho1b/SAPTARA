@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use App\Models\Teacher;
+use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\Student;
+use App\Models\Teacher;
+use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use PDO;
 
 class UserSeeder extends Seeder
@@ -39,14 +39,14 @@ class UserSeeder extends Seeder
 
         if ($dbPath) {
             try {
-                $pdo = new PDO('sqlite:' . $dbPath);
-                $sqliteUsers = $pdo->query("SELECT * FROM user")->fetchAll(PDO::FETCH_ASSOC);
-                $sqliteTeachers = $pdo->query("SELECT * FROM teacher")->fetchAll(PDO::FETCH_ASSOC);
-                $sqliteClasses = $pdo->query("SELECT * FROM class")->fetchAll(PDO::FETCH_ASSOC);
-                $sqliteStudents = $pdo->query("SELECT * FROM student")->fetchAll(PDO::FETCH_ASSOC);
+                $pdo = new PDO('sqlite:'.$dbPath);
+                $sqliteUsers = $pdo->query('SELECT * FROM user')->fetchAll(PDO::FETCH_ASSOC);
+                $sqliteTeachers = $pdo->query('SELECT * FROM teacher')->fetchAll(PDO::FETCH_ASSOC);
+                $sqliteClasses = $pdo->query('SELECT * FROM class')->fetchAll(PDO::FETCH_ASSOC);
+                $sqliteStudents = $pdo->query('SELECT * FROM student')->fetchAll(PDO::FETCH_ASSOC);
                 $this->command->info("Loaded data from SQLite database: {$dbPath}");
             } catch (\Exception $e) {
-                $this->command->warn("Could not read from SQLite: " . $e->getMessage() . ". Using fallback data.");
+                $this->command->warn('Could not read from SQLite: '.$e->getMessage().'. Using fallback data.');
             }
         }
 
@@ -140,14 +140,14 @@ class UserSeeder extends Seeder
             $oldUserId = $teacherIdToUserId[$oldTeacherId] ?? null;
             $newTeacherId = $oldUserId ? ($userIdToNewTeacherId[$oldUserId] ?? null) : null;
 
-            if (!$newTeacherId) {
+            if (! $newTeacherId) {
                 // Fallback to first teacher
                 $newTeacherId = Teacher::first()->id;
             }
 
             $classCode = trim($c['class_code']);
             if (empty($classCode)) {
-                $classCode = 'KLS-' . ($c['id'] ?? rand(100, 999));
+                $classCode = 'KLS-'.($c['id'] ?? rand(100, 999));
             }
 
             $schoolClass = SchoolClass::updateOrCreate(
@@ -177,13 +177,13 @@ class UserSeeder extends Seeder
             $oldClassId = $s['class_id'];
             $newClassId = $classIdMap[$oldClassId] ?? null;
 
-            if (!$newClassId) {
+            if (! $newClassId) {
                 $newClassId = SchoolClass::first()->id;
             }
 
             $targetClass = SchoolClass::find($newClassId);
-            $schoolId = $targetClass?->school_id ?? \App\Models\School::first()?->id;
-            $nis = '100' . str_pad((string)($studentCount + 1), 3, '0', STR_PAD_LEFT);
+            $schoolId = $targetClass?->school_id ?? School::first()?->id;
+            $nis = '100'.str_pad((string) ($studentCount + 1), 3, '0', STR_PAD_LEFT);
 
             Student::updateOrCreate(
                 [
@@ -205,7 +205,7 @@ class UserSeeder extends Seeder
         }
 
         $this->command->info("Seeded {$studentCount} students linked to classes.");
-        $this->command->info("=== SEEDING SUMMARY ===");
+        $this->command->info('=== SEEDING SUMMARY ===');
         $this->command->info("Guru/User login credentials: [email di atas] / password: 'password123'");
         $this->command->info("Siswa login: [Nama Siswa] / [Kode Kelas], contoh: 'Kaisara Aqilla' / '5A'");
     }

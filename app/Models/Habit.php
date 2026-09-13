@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Builder;
 
 class Habit extends Model
 {
@@ -66,7 +66,7 @@ class Habit extends Model
     {
         return $query->where(function ($q) use ($classId) {
             $q->where('is_custom', false)
-              ->orWhere('class_id', $classId);
+                ->orWhere('class_id', $classId);
         });
     }
 }

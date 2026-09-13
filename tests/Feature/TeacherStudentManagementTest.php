@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\Student;
+use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -14,9 +15,13 @@ class TeacherStudentManagementTest extends TestCase
     use RefreshDatabase;
 
     private School $schoolA;
+
     private School $schoolB;
+
     private User $teacherA;
+
     private SchoolClass $classA;
+
     private Student $studentA1;
 
     protected function setUp(): void
@@ -57,7 +62,7 @@ class TeacherStudentManagementTest extends TestCase
             'school_id' => $this->schoolA->id,
         ]);
 
-        $teacherRecordA = \App\Models\Teacher::create([
+        $teacherRecordA = Teacher::create([
             'user_id' => $this->teacherA->id,
             'school_id' => $this->schoolA->id,
             'display_name' => 'Pak Budi',
@@ -144,7 +149,7 @@ class TeacherStudentManagementTest extends TestCase
             'school_id' => $this->schoolB->id,
         ]);
 
-        $teacherRecordB = \App\Models\Teacher::create([
+        $teacherRecordB = Teacher::create([
             'user_id' => $teacherB->id,
             'school_id' => $this->schoolB->id,
             'display_name' => 'Bu Siti',
@@ -210,8 +215,8 @@ class TeacherStudentManagementTest extends TestCase
 
         // Attempt login with new credentials
         $loginResponse = $this->postJson('/api/auth/student/login', [
-            'school_id'   => $this->schoolA->id,
-            'nis'         => '88888',
+            'school_id' => $this->schoolA->id,
+            'nis' => '88888',
             'access_code' => '999999',
         ]);
 

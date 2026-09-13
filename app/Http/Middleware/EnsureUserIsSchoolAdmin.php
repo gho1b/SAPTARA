@@ -12,13 +12,13 @@ class EnsureUserIsSchoolAdmin
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
         $user = Auth::user();
 
-        if (!$user || $user->role !== 'school_admin' || empty($user->school_id)) {
+        if (! $user || $user->role !== 'school_admin' || empty($user->school_id)) {
             return response()->json([
                 'error' => 'Akses ditolak. Halaman ini hanya dapat diakses oleh Admin Sekolah yang sah.',
             ], 403);
@@ -27,4 +27,3 @@ class EnsureUserIsSchoolAdmin
         return $next($request);
     }
 }
-

@@ -12,7 +12,7 @@ class HabitCompletion extends Model
     protected $fillable = ['student_id', 'habit_id', 'date', 'completed_at'];
 
     protected $casts = [
-        'date'         => 'date',
+        'date' => 'date',
         'completed_at' => 'datetime',
     ];
 

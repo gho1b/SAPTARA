@@ -5,8 +5,8 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 /**
  * Allows both teacher (Sanctum) and parent (JWT role=parent).
@@ -26,11 +26,12 @@ class AuthenticateTeacherOrParent
 
             if ($payload->get('role') === 'parent') {
                 $request->merge([
-                    '_student_id'   => $payload->get('studentId'),
-                    '_class_id'     => $payload->get('classId'),
+                    '_student_id' => $payload->get('studentId'),
+                    '_class_id' => $payload->get('classId'),
                     '_student_name' => $payload->get('studentName'),
-                    '_role'         => 'parent',
+                    '_role' => 'parent',
                 ]);
+
                 return $next($request);
             }
         } catch (JWTException) {

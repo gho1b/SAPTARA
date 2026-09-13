@@ -51,7 +51,7 @@ class SchoolClass extends Model
     protected static function booted(): void
     {
         static::creating(function (SchoolClass $class) {
-            if (empty($class->school_name) && !empty($class->school_id)) {
+            if (empty($class->school_name) && ! empty($class->school_id)) {
                 $class->school_name = School::find($class->school_id)?->name ?? 'Sekolah';
             }
         });

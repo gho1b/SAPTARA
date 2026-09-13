@@ -1,5 +1,11 @@
 <?php
 
+use App\Http\Middleware\AuthenticateParent;
+use App\Http\Middleware\AuthenticateStudent;
+use App\Http\Middleware\AuthenticateTeacher;
+use App\Http\Middleware\AuthenticateTeacherOrParent;
+use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\EnsureUserIsSchoolAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,12 +21,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Register custom middleware aliases
         $middleware->alias([
-            'auth.teacher'          => \App\Http\Middleware\AuthenticateTeacher::class,
-            'auth.student'          => \App\Http\Middleware\AuthenticateStudent::class,
-            'auth.parent'           => \App\Http\Middleware\AuthenticateParent::class,
-            'auth.teacher.or.parent'=> \App\Http\Middleware\AuthenticateTeacherOrParent::class,
-            'auth.admin'            => \App\Http\Middleware\EnsureUserIsAdmin::class,
-            'auth.school_admin'     => \App\Http\Middleware\EnsureUserIsSchoolAdmin::class,
+            'auth.teacher' => AuthenticateTeacher::class,
+            'auth.student' => AuthenticateStudent::class,
+            'auth.parent' => AuthenticateParent::class,
+            'auth.teacher.or.parent' => AuthenticateTeacherOrParent::class,
+            'auth.admin' => EnsureUserIsAdmin::class,
+            'auth.school_admin' => EnsureUserIsSchoolAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -28,4 +34,3 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
     })->create();
-

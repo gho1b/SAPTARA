@@ -35,16 +35,16 @@ class ClassMissionController extends Controller
         // Jika belum ada misi aktif untuk kelas ini, buatkan otomatis 1 misi perdana
         if ($missions->isEmpty()) {
             $defaultMission = ClassMission::create([
-                'class_id'          => $classId,
-                'title'             => 'Ekspedisi Samudra Bersama',
-                'description'       => 'Seluruh awak kapal berlayar bersama mengumpulkan 100 kebiasaan baik dalam 7 hari!',
-                'type'              => 'total_habits',
-                'target_count'      => 100,
-                'reward_xp_each'    => 50,
+                'class_id' => $classId,
+                'title' => 'Ekspedisi Samudra Bersama',
+                'description' => 'Seluruh awak kapal berlayar bersama mengumpulkan 100 kebiasaan baik dalam 7 hari!',
+                'type' => 'total_habits',
+                'target_count' => 100,
+                'reward_xp_each' => 50,
                 'reward_coins_each' => 25,
-                'start_date'        => $now->startOfWeek()->toDateString(),
-                'end_date'          => $now->endOfWeek()->toDateString(),
-                'is_active'         => true,
+                'start_date' => $now->startOfWeek()->toDateString(),
+                'end_date' => $now->endOfWeek()->toDateString(),
+                'is_active' => true,
             ]);
             $missions = collect([$defaultMission]);
         }
@@ -82,21 +82,21 @@ class ClassMissionController extends Controller
             $daysLeft = max(0, Carbon::parse($mission->end_date)->diffInDays(Carbon::parse($today), false) * -1);
 
             return [
-                'id'                => $mission->id,
-                'class_id'          => $mission->class_id,
-                'title'             => $mission->title,
-                'description'       => $mission->description,
-                'type'              => $mission->type,
-                'target_count'      => $mission->target_count,
-                'current_progress'  => $progress,
-                'percentage'        => $percentage,
-                'completed'         => $completed,
-                'claimed'           => $claimed,
-                'reward_xp_each'    => $mission->reward_xp_each,
+                'id' => $mission->id,
+                'class_id' => $mission->class_id,
+                'title' => $mission->title,
+                'description' => $mission->description,
+                'type' => $mission->type,
+                'target_count' => $mission->target_count,
+                'current_progress' => $progress,
+                'percentage' => $percentage,
+                'completed' => $completed,
+                'claimed' => $claimed,
+                'reward_xp_each' => $mission->reward_xp_each,
                 'reward_coins_each' => $mission->reward_coins_each,
-                'start_date'        => $mission->start_date->toDateString(),
-                'end_date'          => $mission->end_date->toDateString(),
-                'days_left'         => $daysLeft,
+                'start_date' => $mission->start_date->toDateString(),
+                'end_date' => $mission->end_date->toDateString(),
+                'days_left' => $daysLeft,
             ];
         });
 
@@ -112,29 +112,29 @@ class ClassMissionController extends Controller
         $class = SchoolClass::findOrFail($classId);
 
         $validated = $request->validate([
-            'title'             => 'required|string|max:255',
-            'description'       => 'nullable|string|max:500',
-            'type'              => 'required|in:total_habits,photo_logbooks',
-            'target_count'      => 'required|integer|min:10|max:5000',
-            'reward_xp_each'    => 'nullable|integer|min:10|max:500',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string|max:500',
+            'type' => 'required|in:total_habits,photo_logbooks',
+            'target_count' => 'required|integer|min:10|max:5000',
+            'reward_xp_each' => 'nullable|integer|min:10|max:500',
             'reward_coins_each' => 'nullable|integer|min:5|max:200',
-            'start_date'        => 'nullable|date',
-            'end_date'          => 'required|date|after_or_equal:start_date',
+            'start_date' => 'nullable|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
         ]);
 
         $startDate = $validated['start_date'] ?? Carbon::now('Asia/Jakarta')->toDateString();
 
         $mission = ClassMission::create([
-            'class_id'          => $class->id,
-            'title'             => $validated['title'],
-            'description'       => $validated['description'] ?? 'Tantangan kolektif bersama seluruh siswa kelas',
-            'type'              => $validated['type'],
-            'target_count'      => $validated['target_count'],
-            'reward_xp_each'    => $validated['reward_xp_each'] ?? 50,
+            'class_id' => $class->id,
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? 'Tantangan kolektif bersama seluruh siswa kelas',
+            'type' => $validated['type'],
+            'target_count' => $validated['target_count'],
+            'reward_xp_each' => $validated['reward_xp_each'] ?? 50,
             'reward_coins_each' => $validated['reward_coins_each'] ?? 20,
-            'start_date'        => $startDate,
-            'end_date'          => $validated['end_date'],
-            'is_active'         => true,
+            'start_date' => $startDate,
+            'end_date' => $validated['end_date'],
+            'is_active' => true,
         ]);
 
         return response()->json([
@@ -193,9 +193,9 @@ class ClassMissionController extends Controller
         // Simpan klaim reward
         ClassMissionClaim::create([
             'class_mission_id' => $mission->id,
-            'student_id'       => $student->id,
-            'reward_xp'        => $mission->reward_xp_each,
-            'reward_coins'     => $mission->reward_coins_each,
+            'student_id' => $student->id,
+            'reward_xp' => $mission->reward_xp_each,
+            'reward_coins' => $mission->reward_coins_each,
         ]);
 
         // Tambahkan reward ke student
@@ -204,11 +204,11 @@ class ClassMissionController extends Controller
         $student->refresh();
 
         return response()->json([
-            'message'     => 'Selamat! Hadiah Ekspedisi Kelas berhasil kamu klaim! ⛵🎉',
-            'rewardXp'    => $mission->reward_xp_each,
+            'message' => 'Selamat! Hadiah Ekspedisi Kelas berhasil kamu klaim! ⛵🎉',
+            'rewardXp' => $mission->reward_xp_each,
             'rewardCoins' => $mission->reward_coins_each,
-            'student'     => [
-                'xp'    => $student->xp,
+            'student' => [
+                'xp' => $student->xp,
                 'coins' => $student->coins,
                 'level' => $student->level,
             ],

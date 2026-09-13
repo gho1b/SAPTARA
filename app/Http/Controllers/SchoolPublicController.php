@@ -38,4 +38,3 @@ class SchoolPublicController extends Controller
         return response()->json($school);
     }
 }
-

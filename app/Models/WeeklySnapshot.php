@@ -16,7 +16,7 @@ class WeeklySnapshot extends Model
 
     protected $casts = [
         'week_start_date' => 'date',
-        'created_at'      => 'datetime',
+        'created_at' => 'datetime',
     ];
 
     public function student(): BelongsTo

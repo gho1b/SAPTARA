@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\SchoolClass;
-use App\Models\Student;
 use Illuminate\Http\Request;
 
 class ClassController extends Controller
@@ -16,6 +15,7 @@ class ClassController extends Controller
             ->where('teacher_id', $teacher->id)
             ->latest()
             ->get();
+
         return response()->json($classes);
     }
 
@@ -34,14 +34,14 @@ class ClassController extends Controller
 
         $request->validate([
             'school_name' => 'required|string',
-            'class_code'  => 'required|string',
-            'ship_name'   => 'nullable|string',
+            'class_code' => 'required|string',
+            'ship_name' => 'nullable|string',
         ]);
 
-        $teacher  = $request->_teacher;
-        $code     = strtoupper($request->class_code);
+        $teacher = $request->_teacher;
+        $code = strtoupper($request->class_code);
         $shipName = $request->ship_name
-            ?? 'Kapal ' . last(explode(' ', $request->school_name)) . ' ' . $code;
+            ?? 'Kapal '.last(explode(' ', $request->school_name)).' '.$code;
 
         $exists = SchoolClass::where('class_code', $code)
             ->where('school_name', $request->school_name)
@@ -52,12 +52,12 @@ class ClassController extends Controller
         }
 
         $class = SchoolClass::create([
-            'teacher_id'  => $teacher->id,
+            'teacher_id' => $teacher->id,
             'school_name' => $request->school_name,
-            'class_code'  => $code,
-            'ship_name'   => $shipName,
-            'semester'    => $request->semester,
-            'tahun_ajaran'=> $request->tahun_ajaran,
+            'class_code' => $code,
+            'ship_name' => $shipName,
+            'semester' => $request->semester,
+            'tahun_ajaran' => $request->tahun_ajaran,
         ]);
 
         return response()->json($class, 201);
@@ -67,6 +67,7 @@ class ClassController extends Controller
     public function show(Request $request, int $id)
     {
         $class = SchoolClass::with('students')->findOrFail($id);
+
         return response()->json($class);
     }
 
@@ -74,10 +75,11 @@ class ClassController extends Controller
     public function destroy(Request $request, int $id)
     {
         $teacher = $request->_teacher;
-        $class   = SchoolClass::where('id', $id)
+        $class = SchoolClass::where('id', $id)
             ->where('teacher_id', $teacher->id)
             ->firstOrFail();
         $class->delete();
+
         return response()->json(['success' => true]);
     }
 }

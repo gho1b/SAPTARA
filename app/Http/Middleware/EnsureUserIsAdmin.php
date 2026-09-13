@@ -17,11 +17,10 @@ class EnsureUserIsAdmin
 
         if (! $user || $user->role !== 'admin') {
             return response()->json([
-                'error' => 'Akses ditolak — khusus Administrator SAPTARA'
+                'error' => 'Akses ditolak — khusus Administrator SAPTARA',
             ], 403);
         }
 
         return $next($request);
     }
 }
-

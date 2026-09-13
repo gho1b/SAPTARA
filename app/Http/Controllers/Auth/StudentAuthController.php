@@ -20,13 +20,13 @@ class StudentAuthController extends Controller
         // 1. Primary multi-tenant flow
         if ($request->filled('school_id') || $request->filled('nis')) {
             $request->validate([
-                'school_id'   => 'required|integer|exists:schools,id',
-                'nis'         => 'required|string',
+                'school_id' => 'required|integer|exists:schools,id',
+                'nis' => 'required|string',
                 'access_code' => 'required|string',
             ], [
-                'school_id.required'   => 'Harap pilih sekolah Anda',
-                'school_id.exists'     => 'Sekolah tidak ditemukan',
-                'nis.required'         => 'Harap masukkan NIS siswa',
+                'school_id.required' => 'Harap pilih sekolah Anda',
+                'school_id.exists' => 'Sekolah tidak ditemukan',
+                'nis.required' => 'Harap masukkan NIS siswa',
                 'access_code.required' => 'Harap masukkan kode unik / PIN siswa',
             ]);
 
@@ -54,7 +54,7 @@ class StudentAuthController extends Controller
 
         // 2. Backward-compatible fallback: name + classCode
         $request->validate([
-            'name'      => 'required|string',
+            'name' => 'required|string',
             'classCode' => 'required|string',
         ]);
 
@@ -79,31 +79,31 @@ class StudentAuthController extends Controller
     {
         $payload = [
             'studentId' => $student->id,
-            'classId'   => $cls?->id,
-            'schoolId'  => $student->school_id,
-            'role'      => 'student',
+            'classId' => $cls?->id,
+            'schoolId' => $student->school_id,
+            'role' => 'student',
         ];
 
         $token = JWTAuth::claims($payload)->fromUser($student);
 
         return response()->json([
-            'token'   => $token,
+            'token' => $token,
             'student' => [
                 'studentId' => $student->id,
-                'classId'   => $cls?->id,
-                'schoolId'  => $student->school_id,
-                'nis'       => $student->nis,
-                'name'      => $student->name,
-                'avatar'    => $student->avatar,
+                'classId' => $cls?->id,
+                'schoolId' => $student->school_id,
+                'nis' => $student->nis,
+                'name' => $student->name,
+                'avatar' => $student->avatar,
             ],
             'class' => $cls ? [
-                'id'         => $cls->id,
-                'classCode'  => $cls->class_code,
+                'id' => $cls->id,
+                'classCode' => $cls->class_code,
                 'schoolName' => $cls->school?->name ?: $cls->school_name,
-                'shipName'   => $cls->ship_name,
+                'shipName' => $cls->ship_name,
             ] : null,
             'school' => $student->school ? [
-                'id'   => $student->school->id,
+                'id' => $student->school->id,
                 'name' => $student->school->name,
                 'npsn' => $student->school->npsn,
                 'logo' => $student->school->logo,

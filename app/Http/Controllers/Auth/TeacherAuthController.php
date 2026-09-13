@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Teacher;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User;
 
 class TeacherAuthController extends Controller
 {
@@ -17,24 +17,24 @@ class TeacherAuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'school_id'             => 'nullable|integer|exists:schools,id',
-            'name'                  => 'required|string|max:255',
-            'email'                 => 'required|email|unique:users,email',
-            'password'              => 'required|string|min:8|confirmed',
+            'school_id' => 'nullable|integer|exists:schools,id',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:8|confirmed',
             'password_confirmation' => 'required|string|min:8',
-            'display_name'          => 'nullable|string|max:255',
+            'display_name' => 'nullable|string|max:255',
         ]);
 
         $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
+            'name' => $request->name,
+            'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role'     => 'teacher',
+            'role' => 'teacher',
         ]);
 
         $teacher = Teacher::create([
-            'user_id'      => $user->id,
-            'school_id'    => $request->school_id,
+            'user_id' => $user->id,
+            'school_id' => $request->school_id,
             'display_name' => $request->display_name ?: $request->name,
         ]);
         $teacher->load('school');
@@ -42,8 +42,8 @@ class TeacherAuthController extends Controller
         $token = $user->createToken('teacher-token')->plainTextToken;
 
         return response()->json([
-            'token'   => $token,
-            'user'    => $user,
+            'token' => $token,
+            'user' => $user,
             'teacher' => $teacher,
         ], 201);
     }
@@ -54,7 +54,7 @@ class TeacherAuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
@@ -62,20 +62,20 @@ class TeacherAuthController extends Controller
             return response()->json(['error' => 'Email atau password salah'], 401);
         }
 
-        $user    = Auth::user();
+        $user = Auth::user();
         $teacher = Teacher::with('school')->firstOrCreate(
             ['user_id' => $user->id],
             ['display_name' => $user->name ?: explode('@', $user->email)[0]]
         );
-        if (!$teacher->relationLoaded('school')) {
+        if (! $teacher->relationLoaded('school')) {
             $teacher->load('school');
         }
 
         $token = $user->createToken('teacher-token')->plainTextToken;
 
         return response()->json([
-            'token'   => $token,
-            'user'    => $user,
+            'token' => $token,
+            'user' => $user,
             'teacher' => $teacher,
         ]);
     }
@@ -86,6 +86,7 @@ class TeacherAuthController extends Controller
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
+
         return response()->json(['message' => 'Logged out successfully']);
     }
 
@@ -94,11 +95,11 @@ class TeacherAuthController extends Controller
      */
     public function me(Request $request)
     {
-        $user    = $request->user();
+        $user = $request->user();
         $teacher = Teacher::with('school')->where('user_id', $user->id)->first() ?? $request->_teacher;
 
         return response()->json([
-            'user'    => $user,
+            'user' => $user,
             'teacher' => $teacher,
         ]);
     }

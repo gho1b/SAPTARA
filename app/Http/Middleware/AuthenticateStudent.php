@@ -5,8 +5,8 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthenticateStudent
 {
@@ -21,8 +21,8 @@ class AuthenticateStudent
 
             $request->merge([
                 '_student_id' => $payload->get('studentId'),
-                '_class_id'   => $payload->get('classId'),
-                '_role'       => 'student',
+                '_class_id' => $payload->get('classId'),
+                '_role' => 'student',
             ]);
         } catch (JWTException $e) {
             return response()->json(['error' => 'Unauthorized — student login required'], 401);

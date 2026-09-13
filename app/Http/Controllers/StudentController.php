@@ -2,16 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Student;
-use App\Models\SchoolClass;
-use App\Models\School;
 use App\Models\HabitCompletion;
-use App\Models\StudentBadge;
-use App\Models\StudentAccessory;
-use App\Models\Habit;
+use App\Models\LogbookEntry;
+use App\Models\SchoolClass;
+use App\Models\Student;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class StudentController extends Controller
 {
@@ -21,8 +19,8 @@ class StudentController extends Controller
         $students = Student::where('class_id', $classId)
             ->orderBy('xp', 'desc')
             ->get()
-            ->map(fn($s) => array_merge($s->toArray(), [
-                'ship_level'     => $s->ship_level,
+            ->map(fn ($s) => array_merge($s->toArray(), [
+                'ship_level' => $s->ship_level,
                 'nautical_miles' => $s->xp,
             ]));
 
@@ -40,11 +38,11 @@ class StudentController extends Controller
         }
 
         $request->validate([
-            'class_id'     => 'required|integer|exists:classes,id',
-            'name'         => 'required|string|max:255',
-            'nis'          => 'nullable|string|max:50',
-            'access_code'  => 'nullable|string|max:20',
-            'avatar'       => 'nullable|string',
+            'class_id' => 'required|integer|exists:classes,id',
+            'name' => 'required|string|max:255',
+            'nis' => 'nullable|string|max:50',
+            'access_code' => 'nullable|string|max:20',
+            'avatar' => 'nullable|string',
             'parent_email' => 'nullable|email',
         ]);
 
@@ -65,12 +63,12 @@ class StudentController extends Controller
             if ($existsNis) {
                 return response()->json(['error' => "Siswa dengan NIS \"{$nis}\" sudah terdaftar di sekolah ini!"], 409);
             }
-        } elseif (!$nis) {
+        } elseif (! $nis) {
             $lastId = Student::max('id') ?? 0;
-            $nis = date('Y') . str_pad((string) ($lastId + 1), 4, '0', STR_PAD_LEFT);
+            $nis = date('Y').str_pad((string) ($lastId + 1), 4, '0', STR_PAD_LEFT);
             while (Student::where('school_id', $schoolId)->where('nis', $nis)->exists()) {
                 $lastId++;
-                $nis = date('Y') . str_pad((string) ($lastId + 1), 4, '0', STR_PAD_LEFT);
+                $nis = date('Y').str_pad((string) ($lastId + 1), 4, '0', STR_PAD_LEFT);
             }
         }
 
@@ -79,12 +77,12 @@ class StudentController extends Controller
             : (string) random_int(100000, 999999);
 
         $student = Student::create([
-            'school_id'    => $schoolId,
-            'class_id'     => $request->class_id,
-            'name'         => $request->name,
-            'nis'          => $nis,
-            'access_code'  => $accessCode,
-            'avatar'       => $request->avatar ?? '🧒',
+            'school_id' => $schoolId,
+            'class_id' => $request->class_id,
+            'name' => $request->name,
+            'nis' => $nis,
+            'access_code' => $accessCode,
+            'avatar' => $request->avatar ?? '🧒',
             'parent_email' => $request->parent_email,
         ]);
 
@@ -98,10 +96,10 @@ class StudentController extends Controller
         $schoolId = $student->school_id;
 
         $request->validate([
-            'name'         => 'sometimes|required|string|max:255',
-            'nis'          => 'nullable|string|max:50',
-            'access_code'  => 'nullable|string|max:20',
-            'avatar'       => 'nullable|string',
+            'name' => 'sometimes|required|string|max:255',
+            'nis' => 'nullable|string|max:50',
+            'access_code' => 'nullable|string|max:20',
+            'avatar' => 'nullable|string',
             'parent_email' => 'nullable|email',
         ]);
 
@@ -142,14 +140,14 @@ class StudentController extends Controller
     /** GET /api/students/profile/{id} — Detail siswa dengan stats */
     public function show(int $id)
     {
-        $student     = Student::with(['badges.habit', 'accessories'])->findOrFail($id);
-        $badgeNames  = $student->badges->map(fn($b) => $b->habit?->badge)->filter()->values();
+        $student = Student::with(['badges.habit', 'accessories'])->findOrFail($id);
+        $badgeNames = $student->badges->map(fn ($b) => $b->habit?->badge)->filter()->values();
         $accessories = $student->accessories->pluck('accessory_id');
 
         return response()->json(array_merge($student->toArray(), [
-            'ship_level'     => $student->ship_level,
+            'ship_level' => $student->ship_level,
             'nautical_miles' => $student->xp,
-            'badge_names'    => $badgeNames,
+            'badge_names' => $badgeNames,
             'owned_accessories' => $accessories,
         ]));
     }
@@ -157,38 +155,38 @@ class StudentController extends Controller
     /** GET /api/students/{id}/dashboard */
     public function dashboard(int $id)
     {
-        $student       = Student::findOrFail($id);
-        $today         = Carbon::now('Asia/Jakarta')->toDateString();
+        $student = Student::findOrFail($id);
+        $today = Carbon::now('Asia/Jakarta')->toDateString();
         $completedToday = HabitCompletion::where('student_id', $id)
             ->where('date', $today)->count();
 
         return response()->json([
-            'student'        => array_merge($student->toArray(), [
-                'ship_level'     => $student->ship_level,
+            'student' => array_merge($student->toArray(), [
+                'ship_level' => $student->ship_level,
                 'nautical_miles' => $student->xp,
             ]),
-            'ship_level'     => $student->ship_level,
+            'ship_level' => $student->ship_level,
             'completed_today' => $completedToday,
-            'total_habits'   => 7,
-            'streak'         => $student->streak,
+            'total_habits' => 7,
+            'streak' => $student->streak,
         ]);
     }
 
     /** GET /api/students/{id}/weekly — Data mingguan 7 hari terakhir */
     public function weekly(int $id)
     {
-        $tz   = 'Asia/Jakarta';
+        $tz = 'Asia/Jakarta';
         $days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
         $result = [];
 
         for ($i = 6; $i >= 0; $i--) {
-            $date    = Carbon::now($tz)->subDays($i)->toDateString();
-            $dayIdx  = (int) Carbon::now($tz)->subDays($i)->format('N') - 1; // 0=Mon
-            $count   = HabitCompletion::where('student_id', $id)->where('date', $date)->count();
+            $date = Carbon::now($tz)->subDays($i)->toDateString();
+            $dayIdx = (int) Carbon::now($tz)->subDays($i)->format('N') - 1; // 0=Mon
+            $count = HabitCompletion::where('student_id', $id)->where('date', $date)->count();
 
             $result[] = [
-                'day'       => $days[$dayIdx],
-                'date'      => $date,
+                'day' => $days[$dayIdx],
+                'date' => $date,
                 'completed' => $count,
             ];
         }
@@ -200,7 +198,7 @@ class StudentController extends Controller
     public function compass(int $id)
     {
         $since = Carbon::now('Asia/Jakarta')->subDays(30)->toDateString();
-        $rows  = HabitCompletion::where('student_id', $id)
+        $rows = HabitCompletion::where('student_id', $id)
             ->where('date', '>=', $since)
             ->selectRaw('habit_id, COUNT(*) as cnt')
             ->groupBy('habit_id')
@@ -220,8 +218,8 @@ class StudentController extends Controller
         $students = Student::where('class_id', $classId)
             ->orderByDesc('xp')
             ->get()
-            ->map(fn($s) => array_merge($s->toArray(), [
-                'ship_level'     => $s->ship_level,
+            ->map(fn ($s) => array_merge($s->toArray(), [
+                'ship_level' => $s->ship_level,
                 'nautical_miles' => $s->xp,
             ]));
 
@@ -240,7 +238,7 @@ class StudentController extends Controller
             ->groupBy('date')
             ->pluck('count', 'date');
 
-        $verifiedLogs = \App\Models\LogbookEntry::where('student_id', $id)
+        $verifiedLogs = LogbookEntry::where('student_id', $id)
             ->where('status', 'verified')
             ->where('date', '>=', $since->toDateString())
             ->select('date', DB::raw('COUNT(*) as count'))
@@ -257,10 +255,10 @@ class StudentController extends Controller
             $vCount = (int) ($verifiedLogs[$d] ?? 0);
 
             $days[$d] = [
-                'date'         => $d,
-                'completions'  => $cCount,
+                'date' => $d,
+                'completions' => $cCount,
                 'verifiedLogs' => $vCount,
-                'level'        => min(4, (int) ceil(($cCount / 7) * 4)), // 0 to 4
+                'level' => min(4, (int) ceil(($cCount / 7) * 4)), // 0 to 4
             ];
             $curr->addDay();
         }
@@ -268,8 +266,8 @@ class StudentController extends Controller
         return response()->json([
             'studentId' => $id,
             'startDate' => $since->toDateString(),
-            'endDate'   => $today->toDateString(),
-            'days'      => $days,
+            'endDate' => $today->toDateString(),
+            'days' => $days,
         ]);
     }
 
@@ -282,7 +280,7 @@ class StudentController extends Controller
 
         $request->validate([
             'class_id' => 'required|integer|exists:classes,id',
-            'file'     => 'required|file|max:5120',
+            'file' => 'required|file|max:5120',
         ]);
 
         $classId = (int) $request->class_id;
@@ -300,7 +298,7 @@ class StudentController extends Controller
             }
             fclose($handle);
         } else {
-            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getRealPath());
+            $spreadsheet = IOFactory::load($file->getRealPath());
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray();
         }
@@ -309,7 +307,7 @@ class StudentController extends Controller
             return response()->json(['error' => 'Berkas kosong atau tidak dapat dibaca'], 422);
         }
 
-        $firstRow = array_map(fn($v) => strtolower(trim((string)$v)), $rows[0]);
+        $firstRow = array_map(fn ($v) => strtolower(trim((string) $v)), $rows[0]);
         $startIndex = 0;
         $hasNisColumn = false;
         if (str_contains($firstRow[0] ?? '', 'nama') || str_contains($firstRow[0] ?? '', 'name')) {
@@ -322,33 +320,33 @@ class StudentController extends Controller
 
         $imported = [];
         $skipped = [];
-        $defaultAvatars = ["🧒", "👧", "👦", "🧒🏻", "👧🏻", "👦🏻", "🧑‍🦱", "👩‍🦰", "🧑‍🎓"];
+        $defaultAvatars = ['🧒', '👧', '👦', '🧒🏻', '👧🏻', '👦🏻', '🧑‍🦱', '👩‍🦰', '🧑‍🎓'];
         $lastStudentId = Student::max('id') ?? 0;
 
         for ($i = $startIndex; $i < count($rows); $i++) {
             $row = $rows[$i];
-            $name = trim((string)($row[0] ?? ''));
+            $name = trim((string) ($row[0] ?? ''));
             if ($name === '') {
                 continue;
             }
 
             if ($hasNisColumn) {
-                $nis = trim((string)($row[1] ?? ''));
-                $avatar = trim((string)($row[2] ?? ''));
-                $parentEmail = trim((string)($row[3] ?? ''));
-                $accessCode = trim((string)($row[4] ?? ''));
+                $nis = trim((string) ($row[1] ?? ''));
+                $avatar = trim((string) ($row[2] ?? ''));
+                $parentEmail = trim((string) ($row[3] ?? ''));
+                $accessCode = trim((string) ($row[4] ?? ''));
             } else {
                 $nis = '';
-                $avatar = trim((string)($row[1] ?? ''));
-                $parentEmail = trim((string)($row[2] ?? ''));
+                $avatar = trim((string) ($row[1] ?? ''));
+                $parentEmail = trim((string) ($row[2] ?? ''));
                 $accessCode = '';
             }
 
-            if (!$avatar || mb_strlen($avatar) > 4) {
+            if (! $avatar || mb_strlen($avatar) > 4) {
                 $avatar = $defaultAvatars[$i % count($defaultAvatars)];
             }
 
-            if ($parentEmail !== '' && !filter_var($parentEmail, FILTER_VALIDATE_EMAIL)) {
+            if ($parentEmail !== '' && ! filter_var($parentEmail, FILTER_VALIDATE_EMAIL)) {
                 $parentEmail = null;
             }
 
@@ -356,14 +354,15 @@ class StudentController extends Controller
             if ($nis !== '') {
                 if ($schoolId && Student::where('school_id', $schoolId)->where('nis', $nis)->exists()) {
                     $skipped[] = "$name (NIS $nis sudah terdaftar)";
+
                     continue;
                 }
             } else {
                 $lastStudentId++;
-                $nis = date('Y') . str_pad((string)$lastStudentId, 4, '0', STR_PAD_LEFT);
+                $nis = date('Y').str_pad((string) $lastStudentId, 4, '0', STR_PAD_LEFT);
                 while ($schoolId && Student::where('school_id', $schoolId)->where('nis', $nis)->exists()) {
                     $lastStudentId++;
-                    $nis = date('Y') . str_pad((string)$lastStudentId, 4, '0', STR_PAD_LEFT);
+                    $nis = date('Y').str_pad((string) $lastStudentId, 4, '0', STR_PAD_LEFT);
                 }
             }
 
@@ -378,16 +377,17 @@ class StudentController extends Controller
 
             if ($exists) {
                 $skipped[] = "$name (sudah terdaftar)";
+
                 continue;
             }
 
             $student = Student::create([
-                'school_id'    => $schoolId,
-                'class_id'     => $classId,
-                'name'         => $name,
-                'nis'          => $nis,
-                'access_code'  => $accessCode,
-                'avatar'       => $avatar,
+                'school_id' => $schoolId,
+                'class_id' => $classId,
+                'name' => $name,
+                'nis' => $nis,
+                'access_code' => $accessCode,
+                'avatar' => $avatar,
                 'parent_email' => $parentEmail ?: null,
             ]);
 
@@ -395,9 +395,9 @@ class StudentController extends Controller
         }
 
         return response()->json([
-            'success'  => true,
+            'success' => true,
             'imported' => count($imported),
-            'skipped'  => $skipped,
+            'skipped' => $skipped,
             'students' => $imported,
         ]);
     }
@@ -406,11 +406,11 @@ class StudentController extends Controller
     public function downloadTemplate()
     {
         $headers = [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="template_import_siswa_saptara.csv"',
-            'Pragma'              => 'no-cache',
-            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
-            'Expires'             => '0',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
         ];
 
         return response()->stream(function () {
@@ -428,8 +428,9 @@ class StudentController extends Controller
     public function destroy(int $id)
     {
         $student = Student::findOrFail($id);
-        $name    = $student->name;
+        $name = $student->name;
         $student->delete();
+
         return response()->json(['success' => true, 'name' => $name]);
     }
 
@@ -445,10 +446,10 @@ class StudentController extends Controller
         $student->update(['access_code' => $newCode]);
 
         return response()->json([
-            'success'     => true,
-            'message'     => "Kode unik untuk {$student->name} berhasil diperbarui!",
+            'success' => true,
+            'message' => "Kode unik untuk {$student->name} berhasil diperbarui!",
             'access_code' => $newCode,
-            'student'     => $student,
+            'student' => $student,
         ]);
     }
 }

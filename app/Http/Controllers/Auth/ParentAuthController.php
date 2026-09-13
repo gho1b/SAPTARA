@@ -22,13 +22,13 @@ class ParentAuthController extends Controller
         // 1. Primary multi-tenant quick access: school_id + nis + access_code
         if ($request->filled('school_id') || $request->filled('nis')) {
             $request->validate([
-                'school_id'   => 'required|integer|exists:schools,id',
-                'nis'         => 'required|string',
+                'school_id' => 'required|integer|exists:schools,id',
+                'nis' => 'required|string',
                 'access_code' => 'required|string',
             ], [
-                'school_id.required'   => 'Harap pilih sekolah anak Anda',
-                'school_id.exists'     => 'Sekolah tidak ditemukan',
-                'nis.required'         => 'Harap masukkan NIS anak',
+                'school_id.required' => 'Harap pilih sekolah anak Anda',
+                'school_id.exists' => 'Sekolah tidak ditemukan',
+                'nis.required' => 'Harap masukkan NIS anak',
                 'access_code.required' => 'Harap masukkan kode unik / PIN anak',
             ]);
 
@@ -54,7 +54,7 @@ class ParentAuthController extends Controller
 
         // 2. Backward-compatible fallback: name + classCode
         $request->validate([
-            'name'      => 'required|string',
+            'name' => 'required|string',
             'classCode' => 'required|string',
         ]);
 
@@ -81,7 +81,7 @@ class ParentAuthController extends Controller
     public function loginWithEmail(Request $request)
     {
         $request->validate([
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
@@ -103,13 +103,13 @@ class ParentAuthController extends Controller
 
         if (! $activeStudent) {
             return response()->json([
-                'token'     => null,
-                'userId'    => $user->id,
-                'parentId'  => $parent->id,
-                'name'      => $user->name,
-                'email'     => $user->email,
-                'children'  => [],
-                'message'   => 'Belum ada anak yang dikaitkan. Silakan tautkan anak Anda.',
+                'token' => null,
+                'userId' => $user->id,
+                'parentId' => $parent->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'children' => [],
+                'message' => 'Belum ada anak yang dikaitkan. Silakan tautkan anak Anda.',
             ]);
         }
 
@@ -129,24 +129,24 @@ class ParentAuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'name'                  => 'required|string|max:255',
-            'email'                 => 'required|email|unique:users,email',
-            'password'              => 'required|string|min:6|confirmed',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6|confirmed',
             'password_confirmation' => 'required|string|min:6',
-            'phone'                 => 'nullable|string',
-            'childName'             => 'nullable|string',
-            'classCode'             => 'nullable|string',
+            'phone' => 'nullable|string',
+            'childName' => 'nullable|string',
+            'classCode' => 'nullable|string',
         ]);
 
         $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
+            'name' => $request->name,
+            'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
 
         $parent = ParentProfile::create([
             'user_id' => $user->id,
-            'phone'   => $request->phone,
+            'phone' => $request->phone,
         ]);
 
         // Link first child if provided
@@ -174,17 +174,18 @@ class ParentAuthController extends Controller
             $data['children'] = $this->formatChildrenList($parent->students);
             $data['parentEmail'] = $user->email;
             $data['parentId'] = $parent->id;
+
             return response()->json($data, 201);
         }
 
         return response()->json([
-            'success'   => true,
-            'message'   => 'Akun orang tua berhasil dibuat',
-            'userId'    => $user->id,
-            'parentId'  => $parent->id,
-            'name'      => $user->name,
-            'email'     => $user->email,
-            'children'  => [],
+            'success' => true,
+            'message' => 'Akun orang tua berhasil dibuat',
+            'userId' => $user->id,
+            'parentId' => $parent->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'children' => [],
         ], 201);
     }
 
@@ -194,7 +195,7 @@ class ParentAuthController extends Controller
     public function linkChild(Request $request)
     {
         $request->validate([
-            'parentId'  => 'required|integer|exists:parents,id',
+            'parentId' => 'required|integer|exists:parents,id',
             'childName' => 'required|string',
             'classCode' => 'required|string',
         ]);
@@ -217,9 +218,9 @@ class ParentAuthController extends Controller
         $parent->students()->syncWithoutDetaching([$student->id]);
 
         return response()->json([
-            'success'  => true,
-            'message'  => "Berhasil menautkan {$student->name} ke akun orang tua",
-            'student'  => $student,
+            'success' => true,
+            'message' => "Berhasil menautkan {$student->name} ke akun orang tua",
+            'student' => $student,
             'children' => $this->formatChildrenList($parent->students()->with('class')->get()),
         ]);
     }
@@ -230,6 +231,7 @@ class ParentAuthController extends Controller
     public function switchChild(Request $request, int $studentId)
     {
         $student = Student::with('class')->findOrFail($studentId);
+
         return $this->respondWithStudentToken($student, $student->class);
     }
 
@@ -239,30 +241,30 @@ class ParentAuthController extends Controller
     private function respondWithStudentToken(Student $student, ?SchoolClass $cls)
     {
         $payload = [
-            'studentId'   => $student->id,
-            'classId'     => $student->class_id,
+            'studentId' => $student->id,
+            'classId' => $student->class_id,
             'studentName' => $student->name,
-            'role'        => 'parent',
+            'role' => 'parent',
         ];
 
         $token = JWTAuth::claims($payload)->fromUser($student);
 
         return response()->json([
-            'token'  => $token,
+            'token' => $token,
             'parent' => [
-                'studentId'     => $student->id,
-                'classId'       => $student->class_id,
-                'studentName'   => $student->name,
+                'studentId' => $student->id,
+                'classId' => $student->class_id,
+                'studentName' => $student->name,
                 'studentAvatar' => $student->avatar,
             ],
             'class' => $cls ? [
-                'id'         => $cls->id,
-                'classCode'  => $cls->class_code,
+                'id' => $cls->id,
+                'classCode' => $cls->class_code,
                 'schoolName' => $cls->school?->name ?: $cls->school_name,
-                'shipName'   => $cls->ship_name,
+                'shipName' => $cls->ship_name,
             ] : null,
             'school' => $student->school ? [
-                'id'   => $student->school->id,
+                'id' => $student->school->id,
                 'name' => $student->school->name,
                 'npsn' => $student->school->npsn,
                 'logo' => $student->school->logo,
@@ -272,13 +274,13 @@ class ParentAuthController extends Controller
 
     private function formatChildrenList($students)
     {
-        return $students->map(fn($s) => [
-            'id'         => $s->id,
-            'name'       => $s->name,
-            'avatar'     => $s->avatar,
-            'xp'         => $s->xp,
-            'classId'    => $s->class_id,
-            'classCode'  => $s->class?->class_code,
+        return $students->map(fn ($s) => [
+            'id' => $s->id,
+            'name' => $s->name,
+            'avatar' => $s->avatar,
+            'xp' => $s->xp,
+            'classId' => $s->class_id,
+            'classCode' => $s->class?->class_code,
             'schoolName' => $s->class?->school_name,
         ])->values();
     }
