@@ -1,4 +1,4 @@
-name: Production Artifact Build
+name: Production Artifact Build (Zero-Shell cPanel)
 
 on:
   push:
@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   build-production-artifact:
-    name: Build & Package Production Artifact
+    name: Build & Package Static & PHP Artifact
     runs-on: ubuntu-latest
 
     steps:
@@ -51,14 +51,7 @@ jobs:
           echo "RELEASE_NAME=saptara-production-${CLEAN_TAG}" >> $GITHUB_ENV
           echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: mbstring, dom, fileinfo, gd, zip, bcmath
-          coverage: none
-
-      - name: Setup Node.js
+      - name: Setup Node.js (Static Build)
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -67,45 +60,74 @@ jobs:
       - name: Install NPM Dependencies
         run: npm ci
 
-      - name: Build Frontend Assets
-        run: npm run build
-
-      - name: Install Composer Dependencies (Production)
+      - name: Build Static Frontend Assets (React + Tailwind via Vite)
         run: |
+          echo "Mengompilasi aset aplikasi React menjadi bundle statis..."
+          npm run build
+          
+          # Verifikasi file manifest dan aset statis hasil kompilasi
+          if [ ! -f "public/build/manifest.json" ]; then
+            echo "❌ Error: File public/build/manifest.json tidak ditemukan setelah proses build!"
+            exit 1
+          fi
+          echo "✅ Aset statis berhasil dikompilasi ke folder public/build/:"
+          ls -lh public/build/assets/
+
+      - name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, dom, fileinfo, gd, zip, bcmath
+          coverage: none
+
+      - name: Install Composer Dependencies (Production Mode)
+        run: |
+          echo "Mengunduh dan mengoptimasi dependensi PHP untuk produksi..."
           composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
-      - name: Package Production Artifact
+      - name: Package Production Artifact (Zero-Shell Ready)
         run: |
           STAGING_DIR="dist/${RELEASE_NAME}"
           mkdir -p "${STAGING_DIR}"
 
-          echo "Menyalin direktori dan file aplikasi utama..."
-          cp -r app bootstrap config database public resources routes artisan composer.json composer.lock .env.example DEPLOY.md "${STAGING_DIR}/"
+          echo "1. Menyalin direktori aplikasi utama..."
+          cp -r app bootstrap config database public resources routes artisan composer.json composer.lock .env.example .env.cpanel.example DEPLOY.md "${STAGING_DIR}/"
           cp -r vendor "${STAGING_DIR}/"
 
-          echo "Menyiapkan struktur direktori storage yang bersih..."
+          # Salin root .htaccess jika ada
+          if [ -f ".htaccess" ]; then
+            cp .htaccess "${STAGING_DIR}/.htaccess"
+          fi
+
+          # Pastikan file hot (HMR dev mode) tidak terikut agar server selalu membaca aset statis
+          rm -f "${STAGING_DIR}/public/hot"
+
+          echo "2. Generate random APP_KEY untuk kemudahan deploy di cPanel..."
+          GENERATED_KEY=$(php -r "echo 'base64:' . base64_encode(random_bytes(32));")
+          sed -i "s|APP_KEY=.*|APP_KEY=${GENERATED_KEY}|g" "${STAGING_DIR}/.env.cpanel.example"
+
+          echo "3. Menyiapkan struktur direktori storage yang bersih..."
           mkdir -p "${STAGING_DIR}/storage/app/public"
           mkdir -p "${STAGING_DIR}/storage/framework/cache/data"
           mkdir -p "${STAGING_DIR}/storage/framework/sessions"
           mkdir -p "${STAGING_DIR}/storage/framework/views"
           mkdir -p "${STAGING_DIR}/storage/logs"
 
-          # Placeholder agar git / struktur direktori tetap ada
           touch "${STAGING_DIR}/storage/logs/.gitignore"
           touch "${STAGING_DIR}/storage/framework/cache/.gitignore"
           touch "${STAGING_DIR}/storage/framework/sessions/.gitignore"
           touch "${STAGING_DIR}/storage/framework/views/.gitignore"
 
-          # Bersihkan cache file sisa proses build jika ada
+          # Bersihkan cache file sisa proses build lokal
           rm -f "${STAGING_DIR}/bootstrap/cache/"*.php
 
-          echo "Mengompresi artefak ke format .zip dan .tar.gz..."
+          echo "4. Mengompresi paket produksi ke format .zip dan .tar.gz..."
           cd dist
           zip -r "${RELEASE_NAME}.zip" "${RELEASE_NAME}"
           tar -czf "${RELEASE_NAME}.tar.gz" "${RELEASE_NAME}"
           cd ..
 
-          echo "Ukuran file artefak yang dihasilkan:"
+          echo "Ukuran artefak produksi yang siap di-deploy tanpa Node/Shell:"
           ls -lh dist/${RELEASE_NAME}.*
 
       - name: Upload Production Artifact (.zip)
@@ -135,4 +157,3 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

@@ -1,164 +1,110 @@
-# Panduan Deploy ke Shared PHP Hosting
+# Panduan Deploy SAPTARA ke Shared Hosting cPanel (Zero-Node & Zero-Shell)
 
-## File yang perlu diupload ke hosting
-
-Upload **seluruh folder `saptara-laravel/`** ke server. Struktur di hosting:
-
-```
-public_html/          ← atau httpdocs/, www/, dll
-├── index.php         ← dari saptara-laravel/public/index.php
-├── .htaccess         ← dari saptara-laravel/public/.htaccess
-├── storage/          ← symlink atau copy manual
-└── [aset lainnya]
-
-saptara-laravel/      ← di luar public_html (lebih aman)
-├── app/
-├── bootstrap/
-├── config/
-├── database/
-├── routes/
-├── storage/
-└── ...
-```
-
-> **Catatan penting:** Tempatkan folder `saptara-laravel` di luar `public_html`, lalu arahkan `public_html` ke folder `public/` Laravel.
+Aplikasi SAPTARA dirancang agar dapat di-deploy ke shared hosting PHP murah (seperti cPanel) **tanpa memerlukan akses terminal/SSH** dan **tanpa memerlukan runtime Node.js di server**.
 
 ---
 
-## Opsi A: Public HTML = Laravel public/ (paling umum di shared hosting)
+## 🚀 Ringkasan Solusi Tanpa Node & Shell
 
-Jika hosting hanya punya `public_html/`, upload semua isi `saptara-laravel/` ke root hosting, lalu **pindahkan isi folder `public/` ke `public_html/`** dan update path di `index.php`:
-
-```php
-// public_html/index.php — update path ini:
-require __DIR__.'/../saptara-laravel/bootstrap/autoload.php';
-$app = require_once __DIR__.'/../saptara-laravel/bootstrap/app.php';
-```
-
----
-
-## .htaccess (sudah ada di Laravel public/)
-
-File `saptara-laravel/public/.htaccess` sudah dikonfigurasi Laravel. Tidak perlu diubah.
-
-Jika hosting menggunakan LiteSpeed, tambahkan:
-```apache
-<IfModule LiteSpeed>
-    RewriteEngine On
-</IfModule>
-```
+| Masalah Umum di Shared Hosting | Solusi Otomatis SAPTARA |
+|---|---|
+| **Tidak ada Node.js di server** | GitHub Actions CI mengompilasi seluruh aplikasi React + Tailwind menjadi aset statis murni (`public/build/`). Server hanya bertugas melayani file statis via PHP/web server. |
+| **Tidak ada akses SSH / Terminal** | Database dapat diatur melalui **Import phpMyAdmin** (`database/saptara_production.sql`) ATAU via browser menggunakan script **Web Installer** (`public/install.php`). |
+| **Tidak bisa jalankan `composer` di hosting** | Seluruh folder `vendor/` produksi sudah dipaketkan lengkap ke dalam file arsip rilis (`.zip`). |
+| **Folder `public_html` cPanel** | Telah disediakan file `.htaccess` di root direktori sehingga ekstraksi langsung ke `public_html` otomatis diarahkan ke `public/` tanpa perlu memindah-mindahkan folder. |
 
 ---
 
-## Langkah Deploy
+## 📦 Cara Mendapatkan Artefak Produksi Siap Pakai
 
-### 0. Build Frontend di Komputer Lokal (Sebelum Upload)
-Karena shared hosting tidak memiliki runtime Node.js native, build aset frontend React secara lokal:
-```bash
-npm run build
-```
-Ini akan menghasilkan file terkompilasi di dalam folder `public/build/`. Pastikan folder `public/build/` ini ikut terupload ke hosting!
-
-### 1. Upload via FTP/cPanel File Manager
-```
-Upload folder saptara-laravel/ ke luar public_html
-Upload isi public/ ke dalam public_html (termasuk public/build/)
-```
-
-### 2. Konfigurasi .env di server
-Edit `.env` di server:
-```env
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=https://domainkamu.com
-
-DB_CONNECTION=mysql
-DB_HOST=localhost          # biasanya localhost di shared hosting
-DB_DATABASE=nama_database  # buat di cPanel → MySQL Databases
-DB_USERNAME=user_database
-DB_PASSWORD=password_database
-
-FILESYSTEM_DISK=public
-```
-
-### 3. Jalankan via SSH (jika tersedia)
-```bash
-cd /path/to/saptara-laravel
-php artisan migrate --force
-php artisan db:seed
-php artisan storage:link
-php artisan config:cache
-php artisan route:cache
-```
-
-### 4. Jika tidak ada SSH (shared hosting tanpa SSH)
-
-#### Migrasi database manual:
-- Gunakan phpMyAdmin di cPanel
-- Import file SQL yang dihasilkan dari `php artisan schema:dump` (jalankan lokal dulu)
-
-#### Storage link manual:
-Buat symlink manual di cPanel File Manager:
-```
-public_html/storage → saptara-laravel/storage/app/public
-```
-Atau copy file foto ke `public_html/storage/logbook/`
-
-#### Konfigurasi via web installer:
-Buat script sementara `public_html/install.php`:
-```php
-<?php
-// Jalankan sekali, hapus setelah selesai!
-require '../saptara-laravel/vendor/autoload.php';
-$app = require '../saptara-laravel/bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
-$kernel->call('migrate', ['--force' => true]);
-$kernel->call('db:seed', ['--force' => true]);
-echo "Done!";
-```
-
----
-
-## Konfigurasi Cron Job (untuk fitur notifikasi email mingguan - Phase 14)
-
-Di cPanel → Cron Jobs, tambahkan:
-```
-* * * * * php /path/to/saptara-laravel/artisan schedule:run >> /dev/null 2>&1
-```
-
----
-
-## Checklist Deploy
-
-- [ ] Database MySQL dibuat di cPanel
-- [ ] .env dikonfigurasi (DB credentials, APP_URL, APP_KEY)
-- [ ] `php artisan migrate --force` berhasil
-- [ ] `php artisan db:seed` berhasil (7 habits terseed)
-- [ ] Storage link terpasang (foto bisa diakses)
-- [ ] `.htaccess` berfungsi (pretty URLs)
-- [ ] `APP_DEBUG=false` di production
-- [ ] Test endpoint: `GET /api/health` → `{"status": "ok"}`
-
----
-
-## Otomatisasi CI GitHub: Artefak Produksi Siap Pakai
-
-Sistem telah dilengkapi dengan GitHub Actions Workflow (`.github/workflows/production-artifact.yml`) yang secara otomatis membuat file arsip produksi (`.zip` dan `.tar.gz`) setiap kali tag rilis dibuat di branch `main`.
-
-### Cara Memicu Pembuatan Artefak:
-1. Pastikan seluruh perubahan sudah di-merge ke branch `main`:
+1. Buka repositori GitHub SAPTARA.
+2. Buat git tag versi baru di branch `main`:
    ```bash
    git checkout main
    git pull origin main
-   ```
-2. Buat git tag versi baru:
-   ```bash
    git tag v1.0.0
    git push origin v1.0.0
    ```
-3. GitHub Actions akan secara otomatis:
-   - Memvalidasi bahwa tag berada pada branch `main`.
-   - Mengompilasi aset frontend React & Tailwind via Vite (`public/build/`).
-   - Mengunduh paket Composer produksi (`--no-dev --optimize-autoloader`).
-   - Memaketkan seluruh aplikasi (termasuk `vendor/`, `public/build/`, dan struktur `storage/` bersih) tanpa file development / testing / `.git`.
-   - Mengunggah artefak ke GitHub Actions Artifacts dan membuat GitHub Release dengan lampiran `.zip` & `.tar.gz`.
+3. GitHub Actions CI akan otomatis memproses dan mengunggah artefak:
+   - Buka tab **Releases** atau tab **Actions** di GitHub.
+   - Unduh file `saptara-production-v1.0.0.zip`.
+
+---
+
+## 🛠️ Langkah-Langkah Deploy ke cPanel (Hanya Menggunakan Browser)
+
+### Langkah 1: Buat Database MySQL di cPanel
+1. Masuk ke cPanel hosting Anda.
+2. Buka menu **MySQL® Databases**.
+3. Buat database baru (misal: `usercpanel_saptara`).
+4. Buat user database baru (misal: `usercpanel_dbuser`) dan simpan password-nya.
+5. Pada bagian **Add User to Database**, pilih user dan database tadi, centang **ALL PRIVILEGES**, lalu klik **Make Changes**.
+
+---
+
+### Langkah 2: Upload & Ekstrak Artefak di File Manager
+1. Di cPanel, buka **File Manager**.
+2. Masuk ke direktori domain Anda (biasanya `public_html` atau folder subdomain).
+3. Klik tombol **Upload** di bagian atas, pilih file `saptara-production-v1.0.0.zip` yang telah diunduh dari GitHub.
+4. Setelah proses upload 100%, klik kanan file `.zip` tersebut lalu pilih **Extract** ke dalam folder saat ini (`public_html`).
+5. Hapus file `.zip` setelah ekstraksi selesai untuk menghemat kuota hosting.
+
+---
+
+### Langkah 3: Konfigurasi File `.env`
+1. Di File Manager cPanel, pastikan opsi **Show Hidden Files (dotfiles)** aktif (ikon Settings di kanan atas).
+2. Temukan file bernama `.env.cpanel.example`, klik kanan lalu pilih **Rename** menjadi `.env`.
+3. Klik kanan file `.env` baru tersebut, lalu pilih **Edit**.
+4. Sesuaikan nilai-nilai berikut:
+   ```env
+   APP_NAME=SAPTARA
+   APP_ENV=production
+   APP_DEBUG=false
+   APP_URL=https://namadomainanda.com
+
+   DB_CONNECTION=mysql
+   DB_HOST=localhost
+   DB_DATABASE=usercpanel_saptara
+   DB_USERNAME=usercpanel_dbuser
+   DB_PASSWORD=PasswordDatabaseAndaTadi
+   ```
+5. Klik **Save Changes**. *(Catatan: `APP_KEY` sudah otomatis di-generate unik pada file konfigurasi ini).*
+
+---
+
+### Langkah 4: Setup Database (Pilih Salah Satu)
+
+#### Cara A: Menggunakan Web Installer Browser (Paling Mudah)
+1. Buka peramban (browser) Anda dan akses:
+   ```
+   https://namadomainanda.com/install.php
+   ```
+2. Klik tombol **"Mulai Migrasi & Setup Database Sekarang"**.
+3. Sistem secara otomatis menjalankan migrasi, seeding 7 kebiasaan anak, membuat akun Super Admin, dan mengoptimasi cache.
+4. **PENTING:** Setelah berhasil, kembali ke File Manager cPanel dan **HAPUS file `public/install.php`** demi keamanan server.
+
+#### Cara B: Menggunakan phpMyAdmin (Alternatif)
+1. Di cPanel, buka menu **phpMyAdmin**.
+2. Klik nama database Anda di sisi kiri (`usercpanel_saptara`).
+3. Klik tab **Import** di bagian atas.
+4. Klik **Choose File**, lalu pilih file `database/saptara_production.sql` dari komputer Anda (atau unduh dari folder yang baru diekstrak).
+5. Klik **Import / Kirim**. Seluruh tabel, data habit, dan akun default akan langsung terpasang dalam hitungan detik.
+
+---
+
+## 🔑 Kredensial Login Bawaan Setelah Instalasi
+
+| Peran Pengguna | URL Masuk | Kredensial Akun | Keterangan |
+|---|---|---|---|
+| **Super Admin** | `https://domainanda.com/admin/login` | **Email:** `admin@saptara.id`<br>**Password:** `password123` | Kelola master sekolah & buat akun operator sekolah |
+| **Admin Sekolah** | `https://domainanda.com/school-admin/login` | **Sekolah:** `SMP Negeri 1 Samudra`<br>**Email:** `admin@samudra.sch.id`<br>**Password:** `password123` | Kelola guru, kelas, siswa (NIS & PIN), dan ortu |
+| **Guru** | `https://domainanda.com` | **Sekolah:** `SMP Negeri 1 Samudra`<br>**Email:** `firman@school.id`<br>**Password:** `password123` | Masuk ke kelas/kapal & pantau logbook siswa |
+| **Siswa** | `https://domainanda.com` | **Sekolah:** `SMP Negeri 1 Samudra`<br>**NIS:** `100001`<br>**PIN:** `123456` | Siswa: Kaisara Aqilla |
+
+---
+
+## ⏱️ Konfigurasi Cron Job (Opsional - Notifikasi Mingguan)
+Di cPanel → **Cron Jobs**, tambahkan perintah berikut setiap menit atau setiap hari:
+```bash
+* * * * * php /home/username/public_html/artisan schedule:run >> /dev/null 2>&1
+```
