@@ -40,9 +40,14 @@ class StudentController extends Controller
         $request->validate([
             'class_id'     => 'required|integer|exists:classes,id',
             'name'         => 'required|string|max:255',
+            'nis'          => 'nullable|string|max:50',
+            'access_code'  => 'nullable|string|max:20',
             'avatar'       => 'nullable|string',
             'parent_email' => 'nullable|email',
         ]);
+
+        $cls = SchoolClass::findOrFail($request->class_id);
+        $schoolId = $cls->school_id;
 
         $exists = Student::where('class_id', $request->class_id)
             ->where('name', $request->name)
@@ -52,9 +57,24 @@ class StudentController extends Controller
             return response()->json(['error' => "\"{$request->name}\" sudah terdaftar di kelas ini!"], 409);
         }
 
+        $nis = $request->filled('nis') ? trim((string) $request->nis) : null;
+        if ($nis && $schoolId) {
+            $existsNis = Student::where('school_id', $schoolId)->where('nis', $nis)->exists();
+            if ($existsNis) {
+                return response()->json(['error' => "Siswa dengan NIS \"{$nis}\" sudah terdaftar di sekolah ini!"], 409);
+            }
+        }
+
+        $accessCode = $request->filled('access_code')
+            ? trim((string) $request->access_code)
+            : (string) random_int(100000, 999999);
+
         $student = Student::create([
+            'school_id'    => $schoolId,
             'class_id'     => $request->class_id,
             'name'         => $request->name,
+            'nis'          => $nis,
+            'access_code'  => $accessCode,
             'avatar'       => $request->avatar ?? '🧒',
             'parent_email' => $request->parent_email,
         ]);
@@ -315,5 +335,24 @@ class StudentController extends Controller
         $name    = $student->name;
         $student->delete();
         return response()->json(['success' => true, 'name' => $name]);
+    }
+
+    /** PATCH /api/students/{id}/reset-code — Guru reset/ubah kode akses siswa */
+    public function resetCode(Request $request, int $id)
+    {
+        $student = Student::findOrFail($id);
+
+        $newCode = $request->filled('access_code')
+            ? trim((string) $request->access_code)
+            : (string) random_int(100000, 999999);
+
+        $student->update(['access_code' => $newCode]);
+
+        return response()->json([
+            'success'     => true,
+            'message'     => "Kode unik untuk {$student->name} berhasil diperbarui!",
+            'access_code' => $newCode,
+            'student'     => $student,
+        ]);
     }
 }

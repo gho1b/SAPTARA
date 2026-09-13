@@ -11,6 +11,7 @@ use App\Http\Controllers\RewardController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\QuestController;
 use App\Http\Controllers\ClassMissionController;
+use App\Http\Controllers\SchoolPublicController;
 use Illuminate\Support\Facades\Route;
 
 // ── Health check ──────────────────────────────────────────────
@@ -20,6 +21,10 @@ Route::get('/health', fn() => response()->json([
     'version'   => '2.0.0 (Laravel)',
     'timestamp' => now()->toISOString(),
 ]));
+
+// ── Public Schools Directory ──────────────────────────────────
+Route::get('/schools',      [SchoolPublicController::class, 'index']);
+Route::get('/schools/{id}', [SchoolPublicController::class, 'show']);
 
 // ── Auth ──────────────────────────────────────────────────────
 Route::post('/auth/teacher/register',          [TeacherAuthController::class, 'register']);
@@ -43,10 +48,11 @@ Route::middleware(['auth:sanctum', 'auth.teacher'])->group(function () {
     Route::delete('/classes/{id}', [ClassController::class, 'destroy']);
 
     // Students management (by teacher)
-    Route::post('/students',            [StudentController::class, 'store']);
-    Route::post('/students/import',     [StudentController::class, 'import']);
-    Route::get('/students/template',    [StudentController::class, 'downloadTemplate']);
-    Route::delete('/students/{id}',     [StudentController::class, 'destroy']);
+    Route::post('/students',                     [StudentController::class, 'store']);
+    Route::post('/students/import',              [StudentController::class, 'import']);
+    Route::get('/students/template',             [StudentController::class, 'downloadTemplate']);
+    Route::patch('/students/{id}/reset-code',    [StudentController::class, 'resetCode']);
+    Route::delete('/students/{id}',              [StudentController::class, 'destroy']);
 
     // Reports (PDF & Excel)
     Route::get('/reports/student/{id}/pdf',   [ReportController::class, 'exportStudentPdf']);

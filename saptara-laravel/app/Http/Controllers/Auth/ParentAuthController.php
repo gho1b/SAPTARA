@@ -19,6 +19,40 @@ class ParentAuthController extends Controller
      */
     public function login(Request $request)
     {
+        // 1. Primary multi-tenant quick access: school_id + nis + access_code
+        if ($request->filled('school_id') || $request->filled('nis')) {
+            $request->validate([
+                'school_id'   => 'required|integer|exists:schools,id',
+                'nis'         => 'required|string',
+                'access_code' => 'required|string',
+            ], [
+                'school_id.required'   => 'Harap pilih sekolah anak Anda',
+                'school_id.exists'     => 'Sekolah tidak ditemukan',
+                'nis.required'         => 'Harap masukkan NIS anak',
+                'access_code.required' => 'Harap masukkan kode unik / PIN anak',
+            ]);
+
+            $student = Student::with(['class.school', 'school'])
+                ->where('school_id', $request->school_id)
+                ->where('nis', trim($request->nis))
+                ->first();
+
+            if (! $student) {
+                return response()->json([
+                    'error' => 'Data anak dengan NIS tersebut tidak ditemukan di sekolah ini.',
+                ], 404);
+            }
+
+            if ($student->access_code !== trim($request->access_code)) {
+                return response()->json([
+                    'error' => 'Kode unik / PIN anak salah. Hubungi pihak sekolah jika belum memiliki kode!',
+                ], 401);
+            }
+
+            return $this->respondWithStudentToken($student, $student->class);
+        }
+
+        // 2. Backward-compatible fallback: name + classCode
         $request->validate([
             'name'      => 'required|string',
             'classCode' => 'required|string',
@@ -224,8 +258,14 @@ class ParentAuthController extends Controller
             'class' => $cls ? [
                 'id'         => $cls->id,
                 'classCode'  => $cls->class_code,
-                'schoolName' => $cls->school_name,
+                'schoolName' => $cls->school?->name ?: $cls->school_name,
                 'shipName'   => $cls->ship_name,
+            ] : null,
+            'school' => $student->school ? [
+                'id'   => $student->school->id,
+                'name' => $student->school->name,
+                'npsn' => $student->school->npsn,
+                'logo' => $student->school->logo,
             ] : null,
         ]);
     }

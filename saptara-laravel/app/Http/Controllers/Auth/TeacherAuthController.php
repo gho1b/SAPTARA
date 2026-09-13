@@ -17,6 +17,7 @@ class TeacherAuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
+            'school_id'             => 'nullable|integer|exists:schools,id',
             'name'                  => 'required|string|max:255',
             'email'                 => 'required|email|unique:users,email',
             'password'              => 'required|string|min:8|confirmed',
@@ -28,12 +29,15 @@ class TeacherAuthController extends Controller
             'name'     => $request->name,
             'email'    => $request->email,
             'password' => Hash::make($request->password),
+            'role'     => 'teacher',
         ]);
 
         $teacher = Teacher::create([
             'user_id'      => $user->id,
+            'school_id'    => $request->school_id,
             'display_name' => $request->display_name ?: $request->name,
         ]);
+        $teacher->load('school');
 
         $token = $user->createToken('teacher-token')->plainTextToken;
 
@@ -59,10 +63,13 @@ class TeacherAuthController extends Controller
         }
 
         $user    = Auth::user();
-        $teacher = Teacher::firstOrCreate(
+        $teacher = Teacher::with('school')->firstOrCreate(
             ['user_id' => $user->id],
             ['display_name' => $user->name ?: explode('@', $user->email)[0]]
         );
+        if (!$teacher->relationLoaded('school')) {
+            $teacher->load('school');
+        }
 
         $token = $user->createToken('teacher-token')->plainTextToken;
 
@@ -88,7 +95,7 @@ class TeacherAuthController extends Controller
     public function me(Request $request)
     {
         $user    = $request->user();
-        $teacher = $request->_teacher;
+        $teacher = Teacher::with('school')->where('user_id', $user->id)->first() ?? $request->_teacher;
 
         return response()->json([
             'user'    => $user,
