@@ -31,17 +31,48 @@ export function AdminSchoolDetailModal({
   onEdit,
 }: AdminSchoolDetailModalProps) {
   const [school, setSchool] = useState<any | null>(null);
+  const [adminAccount, setAdminAccount] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Form School Admin
+  const [showAdminForm, setShowAdminForm] = useState(false);
+  const [adminName, setAdminName] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("password123");
+  const [savingAdmin, setSavingAdmin] = useState(false);
+  const [adminSuccessMsg, setAdminSuccessMsg] = useState<string | null>(null);
+
+  const fetchAdminAccount = (id: number) => {
+    adminService.getSchoolAdminAccount(id).then((res) => {
+      setAdminAccount(res.admin);
+      if (res.admin) {
+        setAdminName(res.admin.name || "");
+        setAdminEmail(res.admin.email || "");
+      }
+    }).catch(() => {});
+  };
 
   useEffect(() => {
     if (open && schoolId) {
       setLoading(true);
       setError(null);
-      adminService
-        .getSchool(schoolId)
-        .then((data) => {
+      setShowAdminForm(false);
+      setAdminSuccessMsg(null);
+      Promise.all([
+        adminService.getSchool(schoolId),
+        adminService.getSchoolAdminAccount(schoolId),
+      ])
+        .then(([data, acc]) => {
           setSchool(data);
+          setAdminAccount(acc.admin);
+          if (acc.admin) {
+            setAdminName(acc.admin.name || "");
+            setAdminEmail(acc.admin.email || "");
+          } else {
+            setAdminName(`Admin ${data.name}`);
+            setAdminEmail(`admin@${data.slug || 'sekolah'}.sch.id`);
+          }
         })
         .catch((err: any) => {
           setError(err.message || "Gagal memuat detail sekolah.");
@@ -51,9 +82,31 @@ export function AdminSchoolDetailModal({
         });
     } else {
       setSchool(null);
+      setAdminAccount(null);
       setError(null);
     }
   }, [open, schoolId]);
+
+  const handleSaveAdminAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!schoolId) return;
+    setSavingAdmin(true);
+    setAdminSuccessMsg(null);
+    try {
+      const res = await adminService.saveSchoolAdminAccount(schoolId, {
+        name: adminName,
+        email: adminEmail,
+        password: adminPassword,
+      });
+      setAdminSuccessMsg(res.message);
+      setAdminAccount(res.admin);
+      setShowAdminForm(false);
+    } catch (err: any) {
+      alert(err.message || "Gagal menyimpan akun Admin Sekolah.");
+    } finally {
+      setSavingAdmin(false);
+    }
+  };
 
   return (
     <Dialog
@@ -215,6 +268,99 @@ export function AdminSchoolDetailModal({
               <p className="text-[11px] text-slate-400 italic p-3 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center">
                 Belum ada guru yang mendaftar atau ditugaskan di sekolah ini.
               </p>
+            )}
+          </div>
+
+          {/* Akun Admin Sekolah (Operator) */}
+          <div className="p-3 rounded-xl border border-teal-200 bg-teal-50/50 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🏫</span>
+                <div>
+                  <h4 className="font-bold text-teal-950 text-xs">Akun Admin Sekolah (Operator)</h4>
+                  <p className="text-[10px] text-teal-700">Email khusus institusi untuk mengelola data operasional sekolah ini</p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAdminForm(!showAdminForm)}
+                className="h-7 text-[11px] text-teal-800 border-teal-300 hover:bg-teal-100"
+              >
+                {adminAccount ? "Atur Ulang Kredensial" : "Terbitkan Akun"}
+              </Button>
+            </div>
+
+            {adminSuccessMsg && (
+              <div className="p-2 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-semibold flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>{adminSuccessMsg}</span>
+              </div>
+            )}
+
+            {adminAccount && !showAdminForm && (
+              <div className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-teal-200 text-xs">
+                <div>
+                  <p className="font-bold text-slate-800">{adminAccount.name}</p>
+                  <p className="text-[11px] font-mono text-slate-500">{adminAccount.email}</p>
+                </div>
+                <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded">
+                  Aktif
+                </span>
+              </div>
+            )}
+
+            {!adminAccount && !showAdminForm && (
+              <p className="text-[11px] text-slate-500 italic">
+                Belum ada akun Admin Sekolah khusus yang diterbitkan untuk sekolah ini.
+              </p>
+            )}
+
+            {showAdminForm && (
+              <form onSubmit={handleSaveAdminAccount} className="pt-2 border-t border-teal-200 space-y-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 uppercase">Nama Admin</label>
+                    <input
+                      type="text"
+                      value={adminName}
+                      onChange={(e) => setAdminName(e.target.value)}
+                      required
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 uppercase">Email Khusus Admin</label>
+                    <input
+                      type="email"
+                      value={adminEmail}
+                      onChange={(e) => setAdminEmail(e.target.value)}
+                      required
+                      placeholder="admin@sekolah.sch.id"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-700 uppercase">Kata Sandi Baru</label>
+                  <input
+                    type="password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    required
+                    placeholder="Minimal 6 karakter"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800"
+                  />
+                </div>
+                <div className="flex justify-end gap-1.5 pt-1">
+                  <Button type="button" size="sm" variant="outline" onClick={() => setShowAdminForm(false)} className="h-7 text-xs">
+                    Batal
+                  </Button>
+                  <Button type="submit" size="sm" variant="primary" disabled={savingAdmin} className="h-7 text-xs bg-teal-700 hover:bg-teal-800">
+                    {savingAdmin ? "Menyimpan..." : "Simpan Akun Admin"}
+                  </Button>
+                </div>
+              </form>
             )}
           </div>
 

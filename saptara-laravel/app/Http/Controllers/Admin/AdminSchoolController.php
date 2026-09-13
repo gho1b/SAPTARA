@@ -11,6 +11,7 @@ use App\Models\HabitCompletion;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -303,6 +304,72 @@ class AdminSchoolController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Sekolah {$name} berhasil dihapus!",
+        ]);
+    }
+
+    /**
+     * GET /api/admin/schools/{id}/admin-account — Info Akun Admin Sekolah
+     */
+    public function getSchoolAdminAccount(int $id)
+    {
+        $school = School::findOrFail($id);
+        $admin = User::where('school_id', $school->id)
+            ->where('role', 'school_admin')
+            ->first();
+
+        return response()->json([
+            'has_admin' => !empty($admin),
+            'admin'     => $admin ? [
+                'id'         => $admin->id,
+                'name'       => $admin->name,
+                'email'      => $admin->email,
+                'created_at' => $admin->created_at,
+            ] : null,
+        ]);
+    }
+
+    /**
+     * POST /api/admin/schools/{id}/admin-account — Buat atau Reset Akun Admin Sekolah
+     */
+    public function saveSchoolAdminAccount(Request $request, int $id)
+    {
+        $school = School::findOrFail($id);
+
+        $request->validate([
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email',
+            'password' => 'required|string|min:6',
+        ]);
+
+        // Check if email already used by another user with different school/role
+        $existing = User::where('email', $request->email)->first();
+        if ($existing && ($existing->school_id != $school->id || $existing->role !== 'school_admin')) {
+            return response()->json([
+                'error' => "Email {$request->email} sudah terdaftar di sistem untuk pengguna lain.",
+            ], 422);
+        }
+
+        $admin = User::updateOrCreate(
+            [
+                'school_id' => $school->id,
+                'role'      => 'school_admin',
+            ],
+            [
+                'name'              => $request->name,
+                'email'             => $request->email,
+                'password'          => Hash::make($request->password),
+                'email_verified_at' => now(),
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => "Akun Admin Sekolah untuk {$school->name} berhasil disimpan!",
+            'admin'   => [
+                'id'    => $admin->id,
+                'name'  => $admin->name,
+                'email' => $admin->email,
+            ],
         ]);
     }
 }

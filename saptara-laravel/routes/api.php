@@ -13,6 +13,8 @@ use App\Http\Controllers\QuestController;
 use App\Http\Controllers\ClassMissionController;
 use App\Http\Controllers\SchoolPublicController;
 use App\Http\Controllers\Admin\AdminSchoolController;
+use App\Http\Controllers\Api\SchoolAdminAuthController;
+use App\Http\Controllers\Api\SchoolAdminController;
 use Illuminate\Support\Facades\Route;
 
 // ── Health check ──────────────────────────────────────────────
@@ -128,4 +130,43 @@ Route::middleware(['auth:sanctum', 'auth.admin'])->prefix('admin')->group(functi
     Route::match(['put', 'post'], '/schools/{id}', [AdminSchoolController::class, 'update']);
     Route::patch('/schools/{id}/toggle-status', [AdminSchoolController::class, 'toggleStatus']);
     Route::delete('/schools/{id}',              [AdminSchoolController::class, 'destroy']);
+    Route::get('/schools/{id}/admin-account',   [AdminSchoolController::class, 'getSchoolAdminAccount']);
+    Route::post('/schools/{id}/admin-account',  [AdminSchoolController::class, 'saveSchoolAdminAccount']);
 });
+
+// ── School Admin Routes ─────────────────────────────────────────
+Route::post('/school-admin/login', [SchoolAdminAuthController::class, 'login']);
+
+Route::middleware(['auth:sanctum', 'auth.school_admin'])->prefix('school-admin')->group(function () {
+    Route::get('/me',                           [SchoolAdminAuthController::class, 'me']);
+    Route::post('/logout',                      [SchoolAdminAuthController::class, 'logout']);
+    Route::get('/dashboard/stats',              [SchoolAdminController::class, 'dashboardStats']);
+
+    // Profil Sekolah
+    Route::get('/profile',                      [SchoolAdminController::class, 'getProfile']);
+    Route::match(['put', 'post'], '/profile',   [SchoolAdminController::class, 'updateProfile']);
+
+    // Dewan Guru
+    Route::get('/teachers',                     [SchoolAdminController::class, 'getTeachers']);
+    Route::post('/teachers',                    [SchoolAdminController::class, 'createTeacher']);
+    Route::put('/teachers/{id}/reset-password', [SchoolAdminController::class, 'resetTeacherPassword']);
+    Route::delete('/teachers/{id}',             [SchoolAdminController::class, 'deleteTeacher']);
+
+    // Rombel & Kelas
+    Route::get('/classes',                      [SchoolAdminController::class, 'getClasses']);
+    Route::post('/classes',                     [SchoolAdminController::class, 'createClass']);
+    Route::put('/classes/{id}',                 [SchoolAdminController::class, 'updateClass']);
+    Route::delete('/classes/{id}',              [SchoolAdminController::class, 'deleteClass']);
+
+    // Data Siswa
+    Route::get('/students',                     [SchoolAdminController::class, 'getStudents']);
+    Route::post('/students',                    [SchoolAdminController::class, 'createStudent']);
+    Route::put('/students/{id}',                [SchoolAdminController::class, 'updateStudent']);
+    Route::patch('/students/{id}/reset-code',   [SchoolAdminController::class, 'resetStudentPin']);
+    Route::delete('/students/{id}',             [SchoolAdminController::class, 'deleteStudent']);
+
+    // Data Orang Tua
+    Route::get('/parents',                      [SchoolAdminController::class, 'getParents']);
+    Route::post('/parents/link',                [SchoolAdminController::class, 'linkParent']);
+});
+

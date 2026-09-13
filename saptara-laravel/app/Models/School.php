@@ -57,6 +57,16 @@ class School extends Model
         return $this->hasMany(Student::class, 'school_id');
     }
 
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class, 'school_id');
+    }
+
+    public function schoolAdmins(): HasMany
+    {
+        return $this->hasMany(User::class, 'school_id')->where('role', 'school_admin');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);

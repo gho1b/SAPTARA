@@ -25,6 +25,15 @@ import { AdminLayout } from "./pages/admin/AdminLayout";
 import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
 import { AdminSchoolListPage } from "./pages/admin/AdminSchoolListPage";
 
+import { SchoolAdminLoginPage } from "./pages/school-admin/SchoolAdminLoginPage";
+import { SchoolAdminLayout } from "./pages/school-admin/SchoolAdminLayout";
+import { SchoolAdminDashboardPage } from "./pages/school-admin/SchoolAdminDashboardPage";
+import { SchoolAdminTeachersPage } from "./pages/school-admin/SchoolAdminTeachersPage";
+import { SchoolAdminClassesPage } from "./pages/school-admin/SchoolAdminClassesPage";
+import { SchoolAdminStudentsPage } from "./pages/school-admin/SchoolAdminStudentsPage";
+import { SchoolAdminParentsPage } from "./pages/school-admin/SchoolAdminParentsPage";
+import { SchoolAdminProfilePage } from "./pages/school-admin/SchoolAdminProfilePage";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -146,6 +155,18 @@ export function App() {
                 <Route index element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="dashboard" element={<AdminDashboardPage />} />
                 <Route path="schools" element={<AdminSchoolListPage />} />
+              </Route>
+
+              {/* ── School Admin (Operator Sekolah) Routes ── */}
+              <Route path="/school-admin/login" element={<SchoolAdminLoginPage />} />
+              <Route path="/school-admin" element={<SchoolAdminLayout />}>
+                <Route index element={<Navigate to="/school-admin/dashboard" replace />} />
+                <Route path="dashboard" element={<SchoolAdminDashboardPage />} />
+                <Route path="teachers" element={<SchoolAdminTeachersPage />} />
+                <Route path="classes" element={<SchoolAdminClassesPage />} />
+                <Route path="students" element={<SchoolAdminStudentsPage />} />
+                <Route path="parents" element={<SchoolAdminParentsPage />} />
+                <Route path="profile" element={<SchoolAdminProfilePage />} />
               </Route>
 
               {/* Fallback */}

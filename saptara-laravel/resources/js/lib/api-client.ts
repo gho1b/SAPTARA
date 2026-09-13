@@ -86,6 +86,35 @@ export function setAdminUser(user: any): void {
   localStorage.setItem("saptara_admin_user", JSON.stringify(user));
 }
 
+// ── School Admin Auth Helpers ──
+export function getSchoolAdminToken(): string | null {
+  return localStorage.getItem("saptara_school_admin_token");
+}
+export function setSchoolAdminToken(token: string): void {
+  localStorage.setItem("saptara_school_admin_token", token);
+}
+export function removeSchoolAdminToken(): void {
+  localStorage.removeItem("saptara_school_admin_token");
+  localStorage.removeItem("saptara_school_admin_user");
+  localStorage.removeItem("saptara_school_admin_school");
+}
+export function getSchoolAdminUser(): any | null {
+  const raw = localStorage.getItem("saptara_school_admin_user");
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+export function setSchoolAdminUser(user: any): void {
+  localStorage.setItem("saptara_school_admin_user", JSON.stringify(user));
+}
+export function getSchoolAdminSchool(): any | null {
+  const raw = localStorage.getItem("saptara_school_admin_school");
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+export function setSchoolAdminSchool(school: any): void {
+  localStorage.setItem("saptara_school_admin_school", JSON.stringify(school));
+}
+
 // ── Universal Request Fetcher ──
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
@@ -95,12 +124,15 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 
   // If no auth header explicitly set, auto-inject available token
   if (!headers["Authorization"]) {
+    const schoolAdminToken = getSchoolAdminToken();
     const adminToken = getAdminToken();
     const teacherToken = getTeacherToken();
     const studentToken = getStudentToken();
     const parentToken = getParentToken();
 
-    if (path.includes("/admin") && adminToken) {
+    if (path.includes("/school-admin") && schoolAdminToken) {
+      headers["Authorization"] = `Bearer ${schoolAdminToken}`;
+    } else if (path.includes("/admin") && adminToken) {
       headers["Authorization"] = `Bearer ${adminToken}`;
     } else if (adminToken && !teacherToken && !studentToken && !parentToken) {
       headers["Authorization"] = `Bearer ${adminToken}`;

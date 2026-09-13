@@ -117,5 +117,16 @@ export const adminService = {
       method: "DELETE",
     });
   },
+
+  async getSchoolAdminAccount(id: number): Promise<{ has_admin: boolean; admin: any | null }> {
+    return apiFetch<{ has_admin: boolean; admin: any | null }>(`/api/admin/schools/${id}/admin-account`);
+  },
+
+  async saveSchoolAdminAccount(id: number, data: { name: string; email: string; password: string }): Promise<{ success: boolean; message: string; admin: any }> {
+    return apiFetch<{ success: boolean; message: string; admin: any }>(`/api/admin/schools/${id}/admin-account`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
 };
 

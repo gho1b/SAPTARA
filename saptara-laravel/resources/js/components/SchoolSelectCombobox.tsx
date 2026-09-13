@@ -4,16 +4,23 @@ import type { School } from "../types";
 import { schoolService } from "../services/school.service";
 
 interface SchoolSelectComboboxProps {
-  selectedSchool: School | null;
-  onSelectSchool: (school: School | null) => void;
+  selectedSchool?: School | null;
+  onSelectSchool?: (school: School | null) => void;
+  // Aliases for form-style compatibility
+  value?: School | null;
+  onChange?: (school: School | null) => void;
   className?: string;
 }
 
 export function SchoolSelectCombobox({
-  selectedSchool,
-  onSelectSchool,
+  selectedSchool: propSelectedSchool,
+  onSelectSchool: propOnSelectSchool,
+  value,
+  onChange,
   className = "",
 }: SchoolSelectComboboxProps) {
+  const selectedSchool = propSelectedSchool !== undefined ? propSelectedSchool : (value ?? null);
+  const onSelectCallback = propOnSelectSchool || onChange;
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [schools, setSchools] = useState<School[]>([]);
@@ -59,7 +66,9 @@ export function SchoolSelectCombobox({
   };
 
   const handleSelect = (school: School) => {
-    onSelectSchool(school);
+    if (onSelectCallback) {
+      onSelectCallback(school);
+    }
     schoolService.setStoredSchool(school);
     setIsOpen(false);
     setSearchQuery("");

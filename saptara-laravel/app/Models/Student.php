@@ -77,6 +77,11 @@ class Student extends Model implements JWTSubject
         return $this->belongsTo(SchoolClass::class, 'class_id');
     }
 
+    public function schoolClass(): BelongsTo
+    {
+        return $this->belongsTo(SchoolClass::class, 'class_id');
+    }
+
     public function habitCompletions(): HasMany
     {
         return $this->hasMany(HabitCompletion::class);

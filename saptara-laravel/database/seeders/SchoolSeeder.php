@@ -130,6 +130,21 @@ class SchoolSeeder extends Seeder
                 $data
             );
         }
+
+        // 3. Create Default School Admin for SMP Negeri 1 Samudra
+        $smp1 = School::where('npsn', '20101234')->first();
+        if ($smp1) {
+            User::updateOrCreate(
+                ['email' => 'admin@samudra.sch.id'],
+                [
+                    'name'              => 'Admin SMPN 1 Samudra',
+                    'password'          => Hash::make('password123'),
+                    'role'              => 'school_admin',
+                    'school_id'         => $smp1->id,
+                    'email_verified_at' => now(),
+                ]
+            );
+        }
     }
 }
 

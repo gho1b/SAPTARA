@@ -625,11 +625,18 @@ export function LandingPage() {
           </div>
         </div>
 
-        {/* Admin Backoffice Portal Footer Link */}
-        <div className="mt-8 text-center text-xs">
+        {/* Admin Portals Footer Links */}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-xs text-slate-400">
+          <Link
+            to="/school-admin/login"
+            className="inline-flex items-center gap-1 text-slate-500 hover:text-emerald-700 font-medium transition-colors"
+          >
+            <span>🏫 Portal Admin Sekolah</span>
+          </Link>
+          <span>•</span>
           <Link
             to="/admin/login"
-            className="inline-flex items-center gap-1.5 text-slate-400 hover:text-slate-700 font-medium transition-colors"
+            className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-700 font-medium transition-colors"
           >
             <span>⚓ Portal Administrator Platform</span>
           </Link>

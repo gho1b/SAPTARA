@@ -6,13 +6,14 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
-#[Fillable(['name', 'email', 'password', 'role'])]
+#[Fillable(['name', 'email', 'password', 'role', 'school_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements JWTSubject
 {
@@ -30,6 +31,16 @@ class User extends Authenticatable implements JWTSubject
     public function isAdmin(): bool
     {
         return ($this->role ?? '') === 'admin';
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return ($this->role ?? '') === 'admin';
+    }
+
+    public function isSchoolAdmin(): bool
+    {
+        return ($this->role ?? '') === 'school_admin';
     }
 
     public function isTeacher(): bool
@@ -52,7 +63,13 @@ class User extends Authenticatable implements JWTSubject
     {
         return [
             'role' => $this->role ?? 'user',
+            'school_id' => $this->school_id,
         ];
+    }
+
+    public function school(): BelongsTo
+    {
+        return $this->belongsTo(School::class);
     }
 
     public function teacher(): HasOne
