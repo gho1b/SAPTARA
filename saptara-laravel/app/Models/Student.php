@@ -5,9 +5,21 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
-class Student extends Model
+class Student extends Model implements JWTSubject
 {
+    // Required by JWTSubject
+    public function getJWTIdentifier(): mixed
+    {
+        return $this->getKey();
+    }
+
+    public function getJWTCustomClaims(): array
+    {
+        return [];
+    }
+
     protected $fillable = [
         'class_id', 'name', 'avatar',
         'xp', 'coins', 'streak',
