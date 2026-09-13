@@ -91,6 +91,54 @@ class StudentController extends Controller
         return response()->json($student, 201);
     }
 
+    /** PUT /api/students/{id} — Guru: update data siswa */
+    public function update(Request $request, int $id)
+    {
+        $student = Student::findOrFail($id);
+        $schoolId = $student->school_id;
+
+        $request->validate([
+            'name'         => 'sometimes|required|string|max:255',
+            'nis'          => 'nullable|string|max:50',
+            'access_code'  => 'nullable|string|max:20',
+            'avatar'       => 'nullable|string',
+            'parent_email' => 'nullable|email',
+        ]);
+
+        if ($request->filled('nis') && $schoolId) {
+            $nis = trim((string) $request->nis);
+            $exists = Student::where('school_id', $schoolId)
+                ->where('nis', $nis)
+                ->where('id', '!=', $student->id)
+                ->exists();
+            if ($exists) {
+                return response()->json(['error' => "NIS \"{$nis}\" sudah digunakan oleh siswa lain di sekolah ini!"], 409);
+            }
+            $student->nis = $nis;
+        }
+
+        if ($request->filled('name')) {
+            $student->name = trim((string) $request->name);
+        }
+        if ($request->filled('avatar')) {
+            $student->avatar = $request->avatar;
+        }
+        if ($request->has('parent_email')) {
+            $student->parent_email = $request->parent_email ?: null;
+        }
+        if ($request->filled('access_code')) {
+            $student->access_code = trim((string) $request->access_code);
+        }
+
+        $student->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Data {$student->name} berhasil diperbarui!",
+            'student' => $student,
+        ]);
+    }
+
     /** GET /api/students/profile/{id} — Detail siswa dengan stats */
     public function show(int $id)
     {

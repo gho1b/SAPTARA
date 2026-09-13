@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useClasses, useCreateClass } from "../../hooks/use-classes";
-import { useStudentsByClass, useCreateStudent, useDeleteStudent, useResetStudentCode } from "../../hooks/use-students";
+import { useStudentsByClass, useCreateStudent, useUpdateStudent, useDeleteStudent, useResetStudentCode } from "../../hooks/use-students";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -26,6 +26,7 @@ import {
   EyeOff,
   Printer,
   RefreshCw,
+  Edit2,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { downloadAuthorizedFile } from "../../lib/download";
@@ -50,6 +51,7 @@ export function CrewPage() {
   const { data: students, isLoading: studentsLoading } = useStudentsByClass(classId);
 
   const createStudentMutation = useCreateStudent();
+  const updateStudentMutation = useUpdateStudent();
   const deleteStudentMutation = useDeleteStudent();
   const resetStudentCodeMutation = useResetStudentCode();
   const createClassMutation = useCreateClass();
@@ -62,6 +64,18 @@ export function CrewPage() {
   const [newStudentAvatar, setNewStudentAvatar] = useState(AVATARS[0]);
   const [studentTargetClassId, setStudentTargetClassId] = useState<number>(0);
   const [addStudentError, setAddStudentError] = useState<string | null>(null);
+
+  // Edit student modal state
+  const [editStudentModal, setEditStudentModal] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<any | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editNis, setEditNis] = useState("");
+  const [editAccessCode, setEditAccessCode] = useState("");
+  const [editAvatar, setEditAvatar] = useState(AVATARS[0]);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  // Copy credentials feedback
+  const [copiedStudentId, setCopiedStudentId] = useState<number | null>(null);
 
   // Student PIN visibility state
   const [visibleCodes, setVisibleCodes] = useState<Record<number, boolean>>({});
@@ -87,6 +101,47 @@ export function CrewPage() {
         alert(err.message || "Gagal mereset PIN siswa");
       }
     }
+  };
+
+  const handleOpenEditStudent = (student: any) => {
+    setEditingStudent(student);
+    setEditName(student.name);
+    setEditNis(student.nis || "");
+    setEditAccessCode(student.access_code || student.accessCode || "");
+    setEditAvatar(student.avatar || AVATARS[0]);
+    setEditError(null);
+    setEditStudentModal(true);
+  };
+
+  const handleEditStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudent) return;
+    if (!editName.trim()) {
+      setEditError("Nama siswa wajib diisi");
+      return;
+    }
+    try {
+      await updateStudentMutation.mutateAsync({
+        id: editingStudent.id,
+        payload: {
+          name: editName.trim(),
+          nis: editNis.trim() || undefined,
+          accessCode: editAccessCode.trim() || undefined,
+          avatar: editAvatar,
+        },
+      });
+      setEditStudentModal(false);
+    } catch (err: any) {
+      setEditError(err.message || "Gagal memperbarui data siswa");
+    }
+  };
+
+  const handleCopyCredentials = (student: any) => {
+    const school = currentClass?.schoolName || currentClass?.school_name || "SAPTARA";
+    const text = `⚓ KREDENSIAL AKSES SISWA SAPTARA ⚓\nSekolah: ${school}\nNama: ${student.name}\nNIS: ${student.nis || "-"}\nPIN Akses: ${student.access_code || student.accessCode || "-"}\n\nSilakan masuk melalui: ${window.location.origin}`;
+    navigator.clipboard.writeText(text);
+    setCopiedStudentId(student.id);
+    setTimeout(() => setCopiedStudentId(null), 2500);
   };
 
   // Add class modal state
@@ -556,12 +611,44 @@ export function CrewPage() {
                       <Button
                         size="sm"
                         variant="outline"
+                        onClick={() => handleCopyCredentials(student)}
+                        className={`h-8 gap-1 text-[11px] ${
+                          copiedStudentId === student.id
+                            ? "text-emerald-700 border-emerald-300 bg-emerald-50"
+                            : "text-slate-600 border-slate-200 hover:bg-slate-50"
+                        }`}
+                        title="Salin Kredensial Siswa (NIS & PIN) untuk dibagikan via WhatsApp"
+                      >
+                        {copiedStudentId === student.id ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                        <span className="hidden sm:inline">
+                          {copiedStudentId === student.id ? "Tersalin!" : "Salin"}
+                        </span>
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
                         onClick={() => handleOpenCard(student)}
                         className="h-8 gap-1 text-[11px] text-indigo-700 border-indigo-200 hover:bg-indigo-50"
                         title="Lihat & Cetak Kartu Akses Siswa"
                       >
                         <Printer className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Kartu</span>
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenEditStudent(student)}
+                        className="h-8 gap-1 text-[11px] text-sky-700 border-sky-200 hover:bg-sky-50"
+                        title="Edit Data Siswa (Nama, NIS, PIN, Avatar)"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Edit</span>
                       </Button>
 
                       <Button
@@ -580,7 +667,7 @@ export function CrewPage() {
                         variant="outline"
                         onClick={() => handleExportStudentPdf(student.id, student.name)}
                         disabled={downloading === `student-${student.id}`}
-                        className="h-8 gap-1 text-[11px] text-sky-700 border-sky-200 hover:bg-sky-50"
+                        className="h-8 gap-1 text-[11px] text-slate-700 border-slate-200 hover:bg-slate-50"
                         title="Cetak Raport Karakter Siswa PDF"
                       >
                         {downloading === `student-${student.id}` ? (
@@ -708,6 +795,90 @@ export function CrewPage() {
             </Button>
             <Button variant="primary" size="sm" type="submit" disabled={createStudentMutation.isPending}>
               {createStudentMutation.isPending ? "Menyimpan..." : "Simpan Siswa"}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      {/* Modal Edit Student */}
+      <Dialog
+        open={editStudentModal}
+        onClose={() => setEditStudentModal(false)}
+        title={`Edit Data Siswa ✏️`}
+        description={`Perbarui informasi nama, NIS, PIN akses, atau avatar siswa`}
+      >
+        {editError && (
+          <div className="mb-3 flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 p-2.5 text-xs font-semibold text-rose-700">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{editError}</span>
+          </div>
+        )}
+        <form onSubmit={handleEditStudent} className="space-y-4 pt-1">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+              Nama Lengkap Siswa
+            </label>
+            <Input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="Nama siswa"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                Nomor Induk Siswa (NIS)
+              </label>
+              <Input
+                value={editNis}
+                onChange={(e) => setEditNis(e.target.value)}
+                placeholder="Contoh: 10001"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                Kode PIN Akses (6 Digit)
+              </label>
+              <Input
+                value={editAccessCode}
+                onChange={(e) => setEditAccessCode(e.target.value)}
+                placeholder="Contoh: 123456"
+                maxLength={20}
+                className="font-mono"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
+              Pilih Avatar
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {AVATARS.map((av) => (
+                <button
+                  key={av}
+                  type="button"
+                  onClick={() => setEditAvatar(av)}
+                  className={`flex h-11 w-11 items-center justify-center rounded-xl text-2xl transition-all cursor-pointer ${
+                    editAvatar === av
+                      ? "bg-sky-500 text-white shadow-md scale-110"
+                      : "bg-slate-100 hover:bg-slate-200"
+                  }`}
+                >
+                  {av}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" type="button" onClick={() => setEditStudentModal(false)}>
+              Batal
+            </Button>
+            <Button variant="primary" size="sm" type="submit" disabled={updateStudentMutation.isPending}>
+              {updateStudentMutation.isPending ? "Menyimpan..." : "Simpan Perubahan"}
             </Button>
           </div>
         </form>

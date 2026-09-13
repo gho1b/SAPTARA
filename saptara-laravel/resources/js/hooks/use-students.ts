@@ -70,6 +70,18 @@ export function useCreateStudent() {
   });
 }
 
+export function useUpdateStudent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<CreateStudentPayload> }) =>
+      studentService.updateStudent(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+    },
+  });
+}
+
 export function useDeleteStudent() {
   const queryClient = useQueryClient();
   return useMutation({

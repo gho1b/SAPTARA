@@ -50,6 +50,7 @@ Route::middleware(['auth:sanctum', 'auth.teacher'])->group(function () {
 
     // Students management (by teacher)
     Route::post('/students',                     [StudentController::class, 'store']);
+    Route::put('/students/{id}',                 [StudentController::class, 'update']);
     Route::post('/students/import',              [StudentController::class, 'import']);
     Route::get('/students/template',             [StudentController::class, 'downloadTemplate']);
     Route::patch('/students/{id}/reset-code',    [StudentController::class, 'resetCode']);
