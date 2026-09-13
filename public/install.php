@@ -115,9 +115,10 @@ if (! isset($_GET['run']) || $_GET['run'] !== 'saptara_install') {
             </div>
         <?php } ?>
 
-        <div style="margin-top: 25px;">
+        <div style="margin-top: 25px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
             <a href="install.php?run=saptara_install" class="btn">Mulai Migrasi & Setup Database</a>
-            <a href="install.php?view_log=1" target="_blank" class="btn btn-sec">Lihat Log Error Laravel (Jika 500)</a>
+            <a href="install.php?run=saptara_install&fresh=1" class="btn" style="background: #b91c1c;" onclick="return confirm('Apakah Anda yakin ingin mereset seluruh tabel database dan mengulang dari awal?');">Reset & Ulang Bersih (Fresh)</a>
+            <a href="install.php?view_log=1" target="_blank" class="btn btn-sec">Lihat Log Error</a>
         </div>
 
         <div class="warning">
@@ -193,15 +194,30 @@ try {
 }
 
 // LANGKAH 3: Jalankan Migrasi Database
-echo "3. Menjalankan migrasi basis data (migrate --force --no-interaction)...\n";
+$isFresh = isset($_GET['fresh']) && $_GET['fresh'] == '1';
+$migrateCmd = $isFresh ? 'migrate:fresh' : 'migrate';
+$migrationSuccess = false;
+echo "3. Menjalankan migrasi basis data ({$migrateCmd} --force --no-interaction)...\n";
 try {
-    $kernel->call('migrate', [
+    $kernel->call($migrateCmd, [
         '--force' => true,
         '--no-interaction' => true,
     ]);
     echo $kernel->output()."\n";
+    $migrationSuccess = true;
 } catch (Throwable $migErr) {
     echo '   ❌ Terjadi kesalahan saat migrasi: '.$migErr->getMessage()."\n\n";
+    echo "   💡 Jika migrasi sebelumnya gagal di tengah jalan dan tabel sudah terbuat sebagian,\n";
+    echo "      silakan gunakan opsi RESET untuk mengosongkan tabel dan membuat ulang secara bersih:\n";
+    echo "      👉 <a href='install.php?run=saptara_install&fresh=1' style='color:#f87171;font-weight:bold;'>Klik di sini untuk Reset & Jalankan Ulang Bersih (migrate:fresh)</a>\n\n";
+}
+
+if (! $migrationSuccess) {
+    echo "❌ PROSES DIHENTIKAN: Migrasi tabel database belum selesai dengan sukses.\n";
+    echo "   Seeding tidak dapat dijalankan sebelum seluruh tabel dan kolom dibuat.\n";
+    echo "   👉 Silakan klik tautan Reset di atas untuk mengulang dari awal secara bersih.\n";
+    echo '</pre></body></html>';
+    exit;
 }
 
 // LANGKAH 4: Jalankan Seeding

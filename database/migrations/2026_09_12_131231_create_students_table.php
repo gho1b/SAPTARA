@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('students', function (Blueprint $table) {
             $table->id();
             $table->foreignId('class_id')->constrained('classes')->cascadeOnDelete();
-            $table->string('name');
+            $table->string('name', 150);
             $table->string('avatar')->default('🧒');
             $table->integer('xp')->default(0);
             $table->integer('coins')->default(0);

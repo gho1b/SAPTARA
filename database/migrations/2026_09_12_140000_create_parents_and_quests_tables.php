@@ -29,7 +29,7 @@ return new class extends Migration
         Schema::create('student_daily_quest_claims', function (Blueprint $table) {
             $table->id();
             $table->foreignId('student_id')->constrained('students')->cascadeOnDelete();
-            $table->string('quest_key'); // 'morning_sail', 'ocean_lens', 'perfect_habits'
+            $table->string('quest_key', 50); // 'morning_sail', 'ocean_lens', 'perfect_habits'
             $table->date('date');
             $table->integer('reward_xp')->default(0);
             $table->integer('reward_coins')->default(0);
