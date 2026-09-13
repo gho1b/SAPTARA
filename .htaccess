@@ -1,11 +1,19 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    RewriteBase /
 
-    # Block access to sensitive configuration files
-    RewriteRule ^(\.env|\.git|composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml) - [F,L,NC]
+    # 1. Block direct access to sensitive configuration and source files
+    RewriteRule ^(\.env|\.git|composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|\.editorconfig) - [F,L,NC]
 
-    # Route all requests to public/ directory for shared hosting
-    RewriteCond %{REQUEST_URI} !^/public/
+    # 2. If the request already targets public/, do not rewrite again
+    RewriteCond %{REQUEST_URI} ^/public/ [NC]
+    RewriteRule ^ - [L]
+
+    # 3. If file or folder exists inside public/ (e.g. install.php, build/assets/*, icons/*), serve it
+    RewriteCond %{DOCUMENT_ROOT}/public/$1 -f [OR]
+    RewriteCond %{DOCUMENT_ROOT}/public/$1 -d
     RewriteRule ^(.*)$ public/$1 [L]
-</IfModule>
 
+    # 4. Route all application requests to public/index.php
+    RewriteRule ^(.*)$ public/index.php [L]
+</IfModule>
