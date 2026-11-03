@@ -25,6 +25,7 @@ import {
   Activity,
   RotateCcw,
   Sliders,
+  Trash2,
 } from "lucide-react";
 
 interface CommandConfig {
@@ -101,6 +102,17 @@ const COMMAND_CONFIGS: CommandConfig[] = [
     badgeColor: "bg-rose-50 text-rose-700 border-rose-200",
     hasClearAll: true,
   },
+  {
+    key: "clean_migrated_photos",
+    signature: "logbook:clean-migrated-local",
+    title: "Pembersihan Foto cPanel (Sudah di R2)",
+    description: "Hapus foto upload lokal di cPanel yang sudah terbukti ada di Cloudflare R2 untuk membebaskan ruang disk hosting.",
+    icon: <Trash2 className="h-5 w-5 text-teal-600" />,
+    badge: "Disk Cleaner",
+    badgeColor: "bg-teal-50 text-teal-700 border-teal-200",
+    hasDryRun: true,
+    hasBulk: true,
+  },
 ];
 
 export function AdminCommandConsole() {
@@ -113,6 +125,7 @@ export function AdminCommandConsole() {
     optimize_photos: { dryRun: false },
     sync_streaks: { recalculate: false },
     clear_stale_tasks: { allRunning: false },
+    clean_migrated_photos: { dryRun: false, bulk: 10 },
   });
   const [history, setHistory] = useState<CommandExecutionStatus[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);

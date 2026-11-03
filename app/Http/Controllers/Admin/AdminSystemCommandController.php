@@ -60,6 +60,13 @@ class AdminSystemCommandController extends Controller
             'badge' => 'Maintenance',
             'color' => 'rose',
         ],
+        'clean_migrated_photos' => [
+            'name' => 'logbook:clean-migrated-local',
+            'title' => 'Pembersihan Foto cPanel (Sudah di R2)',
+            'description' => 'Hapus foto upload lokal di file manager cPanel yang sudah terbukti ada di static.saptara (R2) untuk membebaskan kuota hosting.',
+            'badge' => 'Disk Cleaner',
+            'color' => 'teal',
+        ],
     ];
 
     /**

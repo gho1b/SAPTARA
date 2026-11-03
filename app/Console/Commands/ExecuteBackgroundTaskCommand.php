@@ -114,6 +114,12 @@ class ExecuteBackgroundTaskCommand extends Command
             if (! empty($options['sweep_orphans'])) {
                 $params['--sweep-orphans'] = true;
             }
+            if (! empty($options['directory'])) {
+                $params['--directory'] = (string) $options['directory'];
+            }
+            if (! empty($options['update_db'])) {
+                $params['--update-db'] = true;
+            }
 
             // Jalankan command
             $exitCode = Artisan::call($commandSignature, $params);
