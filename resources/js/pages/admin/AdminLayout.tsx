@@ -4,6 +4,7 @@ import { adminService } from "../../services/admin.service";
 import {
   LayoutDashboard,
   Building2,
+  Terminal,
   LogOut,
   ShieldAlert,
   Menu,
@@ -72,6 +73,12 @@ export function AdminLayout() {
       label: "Master Data Sekolah",
       icon: <Building2 className="h-4 w-4" />,
       active: location.pathname.startsWith("/admin/schools"),
+    },
+    {
+      to: "/admin/commands",
+      label: "Konsol Perintah",
+      icon: <Terminal className="h-4 w-4" />,
+      active: location.pathname.startsWith("/admin/commands"),
     },
   ];
 

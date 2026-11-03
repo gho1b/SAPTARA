@@ -24,6 +24,7 @@ import { AdminLoginPage } from "./pages/admin/AdminLoginPage";
 import { AdminLayout } from "./pages/admin/AdminLayout";
 import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
 import { AdminSchoolListPage } from "./pages/admin/AdminSchoolListPage";
+import { AdminCommandsPage } from "./pages/admin/AdminCommandsPage";
 
 import { SchoolAdminLoginPage } from "./pages/school-admin/SchoolAdminLoginPage";
 import { SchoolAdminLayout } from "./pages/school-admin/SchoolAdminLayout";
@@ -155,6 +156,7 @@ export function App() {
                 <Route index element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="dashboard" element={<AdminDashboardPage />} />
                 <Route path="schools" element={<AdminSchoolListPage />} />
+                <Route path="commands" element={<AdminCommandsPage />} />
               </Route>
 
               {/* ── School Admin (Operator Sekolah) Routes ── */}

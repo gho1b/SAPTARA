@@ -18,6 +18,7 @@ import {
   XCircle,
   ShieldCheck,
   TrendingUp,
+  Terminal,
 } from "lucide-react";
 
 export function AdminDashboardPage() {
@@ -59,6 +60,18 @@ export function AdminDashboardPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link to="/admin/commands">
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-amber-400 border-amber-500/40 hover:bg-amber-500/10 gap-1.5 font-semibold text-xs"
+              title="Konsol Perintah Sistem & Maintenance"
+            >
+              <Terminal className="h-4 w-4" />
+              <span className="hidden sm:inline">Konsol Perintah</span>
+            </Button>
+          </Link>
+
           <Button
             size="sm"
             variant="outline"
