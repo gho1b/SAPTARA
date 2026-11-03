@@ -83,13 +83,17 @@ class LogbookController extends Controller
     {
         $extension = strtolower($file->getClientOriginalExtension());
         $filename = 'logbook_'.Str::random(24).'.jpg';
-        $destinationRelative = 'logbook/'.$filename;
+
+        $diskName = config('filesystems.logbook_disk', 'r2');
+        $directory = trim((string) config('filesystems.logbook_directory', 'logbook'), '/');
+        $destinationRelative = $directory !== '' ? $directory.'/'.$filename : $filename;
+        $disk = Storage::disk($diskName);
 
         // Jika ekstensi GD tidak aktif, simpan file secara langsung
         if (! extension_loaded('gd')) {
-            $path = $file->store('logbook', 'public');
+            $path = $file->store($directory, $diskName);
 
-            return Storage::url($path);
+            return $disk->url($path);
         }
 
         $realPath = $file->getRealPath();
@@ -105,9 +109,9 @@ class LogbookController extends Controller
         }
 
         if (! $source) {
-            $path = $file->store('logbook', 'public');
+            $path = $file->store($directory, $diskName);
 
-            return Storage::url($path);
+            return $disk->url($path);
         }
 
         // Tangani EXIF Orientation untuk JPEG dari smartphone
@@ -170,9 +174,9 @@ class LogbookController extends Controller
         $imageData = ob_get_clean();
         imagedestroy($canvas);
 
-        Storage::disk('public')->put($destinationRelative, $imageData);
+        $disk->put($destinationRelative, $imageData, 'public');
 
-        return Storage::url($destinationRelative);
+        return $disk->url($destinationRelative);
     }
 
     /** GET /api/logbook/student/{studentId} */
