@@ -4,6 +4,7 @@ import { adminService, type AdminStats } from "../../services/admin.service";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { AdminSchoolFormModal } from "./AdminSchoolFormModal";
+import { AdminCommandConsole } from "./AdminCommandConsole";
 import {
   Building2,
   Users,
@@ -313,6 +314,9 @@ export function AdminDashboardPage() {
           </Card>
         </div>
       </div>
+
+      {/* Manual Console Commands & Maintenance for Super Admin */}
+      <AdminCommandConsole />
 
       {/* Modal Add School */}
       <AdminSchoolFormModal

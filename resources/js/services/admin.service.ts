@@ -128,5 +128,36 @@ export const adminService = {
       body: JSON.stringify(data),
     });
   },
+
+  async getCommands(): Promise<SystemCommandMeta[]> {
+    return apiFetch<SystemCommandMeta[]>("/api/admin/commands");
+  },
+
+  async runCommand(command: string, options?: Record<string, any>): Promise<CommandExecutionResult> {
+    return apiFetch<CommandExecutionResult>("/api/admin/commands/run", {
+      method: "POST",
+      body: JSON.stringify({ command, options }),
+    });
+  },
 };
+
+export interface SystemCommandMeta {
+  key: string;
+  signature: string;
+  title: string;
+  description: string;
+  badge: string;
+  color: string;
+}
+
+export interface CommandExecutionResult {
+  success: boolean;
+  command: string;
+  title: string;
+  exit_code: number;
+  output: string;
+  executed_at: string;
+  message: string;
+  error?: string;
+}
 

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminSchoolController;
+use App\Http\Controllers\Admin\AdminSystemCommandController;
 use App\Http\Controllers\Api\SchoolAdminAuthController;
 use App\Http\Controllers\Api\SchoolAdminController;
 use App\Http\Controllers\Auth\ParentAuthController;
@@ -134,6 +135,8 @@ Route::middleware(['auth:sanctum', 'auth.admin'])->prefix('admin')->group(functi
     Route::delete('/schools/{id}', [AdminSchoolController::class, 'destroy']);
     Route::get('/schools/{id}/admin-account', [AdminSchoolController::class, 'getSchoolAdminAccount']);
     Route::post('/schools/{id}/admin-account', [AdminSchoolController::class, 'saveSchoolAdminAccount']);
+    Route::get('/commands', [AdminSystemCommandController::class, 'index']);
+    Route::post('/commands/run', [AdminSystemCommandController::class, 'run']);
 });
 
 // ── School Admin Routes ────────────────────────────────────────
