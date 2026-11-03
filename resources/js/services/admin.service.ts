@@ -140,6 +140,12 @@ export const adminService = {
     });
   },
 
+  async cancelCommand(id: string): Promise<{ success: boolean; message: string }> {
+    return apiFetch<{ success: boolean; message: string }>(`/api/admin/commands/cancel/${id}`, {
+      method: "POST",
+    });
+  },
+
   async getCommandStatus(id: string): Promise<CommandExecutionStatus> {
     return apiFetch<CommandExecutionStatus>(`/api/admin/commands/status/${id}`);
   },

@@ -100,8 +100,19 @@ class ExecuteBackgroundTaskCommand extends Command
             if (! empty($options['recalculate'])) {
                 $params['--recalculate'] = true;
             }
-            if (! empty($options['limit'])) {
+            if (! empty($options['bulk'])) {
+                $params['--bulk'] = (int) $options['bulk'];
+            } elseif (! empty($options['limit'])) {
                 $params['--limit'] = (int) $options['limit'];
+            }
+            if (! empty($options['all_running'])) {
+                $params['--all-running'] = true;
+            }
+            if (! empty($options['timeout'])) {
+                $params['--timeout'] = (int) $options['timeout'];
+            }
+            if (! empty($options['sweep_orphans'])) {
+                $params['--sweep-orphans'] = true;
             }
 
             // Jalankan command

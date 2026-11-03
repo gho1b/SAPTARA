@@ -10,8 +10,9 @@ use Illuminate\Support\Facades\Storage;
 class MigrateLogbookToR2Command extends Command
 {
     protected $signature = 'logbook:migrate-to-r2
+                            {--bulk= : Jumlah batch/bulk data yang diproses per eksekusi (contoh: 1, 10, 50, 100)}
+                            {--limit= : Alias untuk batasi jumlah file yang diproses per eksekusi}
                             {--dry-run : Simulasi migrasi tanpa upload ke R2 dan tanpa menghapus file lokal}
-                            {--limit= : Batasi jumlah file yang diproses per eksekusi}
                             {--sweep-orphans : Migrasikan juga file fisik lokal yang tidak terdaftar di database}';
 
     protected $description = 'Migrasikan foto logbook dari storage lokal hosting ke Cloudflare R2 secara 1-by-1 dan langsung hapus file lokal untuk menghemat storage';
@@ -19,7 +20,8 @@ class MigrateLogbookToR2Command extends Command
     public function handle(): int
     {
         $isDryRun = (bool) $this->option('dry-run');
-        $limit = $this->option('limit') ? (int) $this->option('limit') : null;
+        $bulkOption = $this->option('bulk') ?: $this->option('limit');
+        $limit = ($bulkOption !== null && $bulkOption !== '') ? (int) $bulkOption : null;
         $sweepOrphans = (bool) $this->option('sweep-orphans');
 
         $r2DiskName = (string) config('filesystems.logbook_disk', 'r2');
@@ -31,6 +33,11 @@ class MigrateLogbookToR2Command extends Command
         $this->line("Target Directory    : <comment>{$targetDirectory}</comment>");
         $this->line("Public URL Prefix   : <comment>{$r2BaseUrl}</comment>");
         $this->line('Mode                : '.($isDryRun ? '<comment>DRY-RUN (Simulasi)</comment>' : '<info>LIVE (Upload & Langsung Hapus Lokal)</info>'));
+        if ($limit !== null && $limit > 0) {
+            $this->line("Mode Bulking        : <comment>{$limit} file per batch</comment>");
+        } else {
+            $this->line('Mode Bulking        : <comment>Semua File (Tanpa Batasan)</comment>');
+        }
 
         $localDisk = Storage::disk('public');
         $r2Disk = Storage::disk($r2DiskName);
@@ -46,7 +53,7 @@ class MigrateLogbookToR2Command extends Command
         $this->info("Ditemukan <comment>{$totalFound}</comment> entri logbook dengan foto yang perlu dimigrasikan.");
 
         if ($limit !== null && $limit > 0) {
-            $this->line("Membatasi pemrosesan ke <comment>{$limit}</comment> entri teratas.");
+            $this->line("Membatasi pemrosesan batch ke <comment>{$limit}</comment> entri teratas.");
             $query->limit($limit);
         }
 
@@ -178,6 +185,13 @@ class MigrateLogbookToR2Command extends Command
         $this->info("File dilewati/hilang  : <comment>{$skippedCount}</comment> file");
         $this->info('Gagal diproses        : '.($failedCount > 0 ? "<error>{$failedCount}</error>" : '<info>0</info>').' file');
         $this->info('Total Space Dibebaskan: <info>'.$this->formatBytes($freedBytes).'</info>');
+
+        if ($limit !== null && $limit > 0 && ($totalFound - $migratedCount) > 0) {
+            $remaining = max(0, $totalFound - $migratedCount);
+            $this->newLine();
+            $this->comment("👉 Batch selesai ({$migratedCount} file diproses). Masih ada perkiraan {$remaining} file tersisa.");
+            $this->comment("   Jalankan kembali batch berikutnya dengan bulk={$limit} untuk melanjutkan migrasi.");
+        }
         $this->info('===================================================');
 
         return self::SUCCESS;

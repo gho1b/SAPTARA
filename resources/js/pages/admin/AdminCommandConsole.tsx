@@ -23,6 +23,8 @@ import {
   Clock,
   History,
   Activity,
+  RotateCcw,
+  Sliders,
 } from "lucide-react";
 
 interface CommandConfig {
@@ -35,6 +37,8 @@ interface CommandConfig {
   badgeColor: string;
   hasDryRun?: boolean;
   hasRecalculate?: boolean;
+  hasBulk?: boolean;
+  hasClearAll?: boolean;
 }
 
 const COMMAND_CONFIGS: CommandConfig[] = [
@@ -56,6 +60,7 @@ const COMMAND_CONFIGS: CommandConfig[] = [
     badge: "R2 Storage",
     badgeColor: "bg-sky-50 text-sky-700 border-sky-200",
     hasDryRun: true,
+    hasBulk: true,
   },
   {
     key: "optimize_photos",
@@ -86,16 +91,28 @@ const COMMAND_CONFIGS: CommandConfig[] = [
     badgeColor: "bg-rose-50 text-rose-700 border-rose-200",
     hasRecalculate: true,
   },
+  {
+    key: "clear_stale_tasks",
+    signature: "saptara:clear-stale-tasks",
+    title: "Pembersihan Task & Schedule Cache",
+    description: "Hapus mutex lock schedule yang menggantung (schedule:clear-cache) dan tandai background task macet sebagai failed.",
+    icon: <RotateCcw className="h-5 w-5 text-rose-600" />,
+    badge: "Maintenance",
+    badgeColor: "bg-rose-50 text-rose-700 border-rose-200",
+    hasClearAll: true,
+  },
 ];
 
 export function AdminCommandConsole() {
   const [activeExecutionId, setActiveExecutionId] = useState<string | null>(null);
   const [activeTask, setActiveTask] = useState<CommandExecutionStatus | null>(null);
   const [startingKey, setStartingKey] = useState<string | null>(null);
-  const [optionsState, setOptionsState] = useState<Record<string, { dryRun?: boolean; recalculate?: boolean }>>({
-    migrate_r2: { dryRun: false },
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
+  const [optionsState, setOptionsState] = useState<Record<string, { dryRun?: boolean; recalculate?: boolean; bulk?: number | null; allRunning?: boolean }>>({
+    migrate_r2: { dryRun: false, bulk: 10 },
     optimize_photos: { dryRun: false },
     sync_streaks: { recalculate: false },
+    clear_stale_tasks: { allRunning: false },
   });
   const [history, setHistory] = useState<CommandExecutionStatus[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -179,7 +196,7 @@ export function AdminCommandConsole() {
     };
   }, [activeExecutionId]);
 
-  const toggleOption = (commandKey: string, optKey: "dryRun" | "recalculate") => {
+  const toggleOption = (commandKey: string, optKey: "dryRun" | "recalculate" | "allRunning") => {
     setOptionsState((prev) => ({
       ...prev,
       [commandKey]: {
@@ -189,9 +206,38 @@ export function AdminCommandConsole() {
     }));
   };
 
+  const handleCancelTask = async (id: string) => {
+    if (!window.confirm("Apakah Anda yakin ingin membatalkan/membersihkan task background ini?")) {
+      return;
+    }
+    setCancelingId(id);
+    try {
+      const res = await adminService.cancelCommand(id);
+      if (res.success) {
+        if (activeExecutionId === id) {
+          setActiveExecutionId(null);
+        }
+        const updated = await adminService.getCommandStatus(id);
+        setActiveTask(updated);
+        loadHistory();
+        setNotificationBanner({
+          type: "success",
+          message: res.message || "Task berhasil dibatalkan dan status dibersihkan.",
+        });
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Gagal membatalkan task background.");
+    } finally {
+      setCancelingId(null);
+    }
+  };
+
   const handleRun = async (cmd: CommandConfig) => {
-    const isDryRun = optionsState[cmd.key]?.dryRun;
-    const isRecalc = optionsState[cmd.key]?.recalculate;
+    const currentOpts = optionsState[cmd.key] || {};
+    const isDryRun = currentOpts.dryRun;
+    const isRecalc = currentOpts.recalculate;
+    const bulk = currentOpts.bulk;
+    const isAllRunning = currentOpts.allRunning;
 
     const confirmMsg =
       `Luncurkan command '${cmd.title}' (${cmd.signature}) di background?\n\n` +
@@ -210,6 +256,8 @@ export function AdminCommandConsole() {
       const res = await adminService.runCommand(cmd.key, {
         dry_run: isDryRun,
         recalculate: isRecalc,
+        bulk: bulk,
+        all_running: isAllRunning,
       });
 
       if (res.success && res.execution_id) {
@@ -362,30 +410,116 @@ export function AdminCommandConsole() {
                   </div>
 
                   {/* Options */}
-                  {(cmd.hasDryRun || cmd.hasRecalculate) && (
-                    <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-2 text-xs">
-                      {cmd.hasDryRun && (
-                        <label className="flex items-center gap-1.5 cursor-pointer text-slate-600 hover:text-slate-900 select-none">
-                          <input
-                            type="checkbox"
-                            checked={!!currentOpts.dryRun}
-                            onChange={() => toggleOption(cmd.key, "dryRun")}
-                            className="rounded border-slate-300 text-amber-600 focus:ring-amber-500 h-3.5 w-3.5"
-                          />
-                          <span className="text-[11px] font-medium">Dry Run (Simulasi)</span>
-                        </label>
-                      )}
+                  {(cmd.hasDryRun || cmd.hasRecalculate || cmd.hasBulk || cmd.hasClearAll) && (
+                    <div className="pt-2 border-t border-slate-100 space-y-2 text-xs">
+                      <div className="flex flex-wrap gap-2">
+                        {cmd.hasDryRun && (
+                          <label className="flex items-center gap-1.5 cursor-pointer text-slate-600 hover:text-slate-900 select-none">
+                            <input
+                              type="checkbox"
+                              checked={!!currentOpts.dryRun}
+                              onChange={() => toggleOption(cmd.key, "dryRun")}
+                              className="rounded border-slate-300 text-amber-600 focus:ring-amber-500 h-3.5 w-3.5"
+                            />
+                            <span className="text-[11px] font-medium">Dry Run (Simulasi)</span>
+                          </label>
+                        )}
 
-                      {cmd.hasRecalculate && (
-                        <label className="flex items-center gap-1.5 cursor-pointer text-slate-600 hover:text-slate-900 select-none">
-                          <input
-                            type="checkbox"
-                            checked={!!currentOpts.recalculate}
-                            onChange={() => toggleOption(cmd.key, "recalculate")}
-                            className="rounded border-slate-300 text-rose-600 focus:ring-rose-500 h-3.5 w-3.5"
-                          />
-                          <span className="text-[11px] font-medium">Hitung Ulang Semua</span>
-                        </label>
+                        {cmd.hasRecalculate && (
+                          <label className="flex items-center gap-1.5 cursor-pointer text-slate-600 hover:text-slate-900 select-none">
+                            <input
+                              type="checkbox"
+                              checked={!!currentOpts.recalculate}
+                              onChange={() => toggleOption(cmd.key, "recalculate")}
+                              className="rounded border-slate-300 text-rose-600 focus:ring-rose-500 h-3.5 w-3.5"
+                            />
+                            <span className="text-[11px] font-medium">Hitung Ulang Semua</span>
+                          </label>
+                        )}
+
+                        {cmd.hasClearAll && (
+                          <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 hover:text-slate-900 select-none">
+                            <input
+                              type="checkbox"
+                              checked={!!currentOpts.allRunning}
+                              onChange={() => toggleOption(cmd.key, "allRunning")}
+                              className="rounded border-rose-300 text-rose-600 focus:ring-rose-500 h-3.5 w-3.5"
+                            />
+                            <span className="text-[11px] font-medium text-rose-800">
+                              Paksa batalkan semua task running (--all-running)
+                            </span>
+                          </label>
+                        )}
+                      </div>
+
+                      {cmd.hasBulk && (
+                        <div className="pt-1.5 border-t border-slate-100/70 space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-600 font-medium flex items-center gap-1">
+                              <Sliders className="h-3 w-3 text-sky-600" />
+                              <span>Bulking Parameter:</span>
+                            </span>
+                            <span className="font-mono text-sky-700 font-bold bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200 text-[10px]">
+                              {currentOpts.bulk ? `${currentOpts.bulk} file` : "Semua File"}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {[1, 10, 50, 100].map((num) => (
+                              <button
+                                key={num}
+                                type="button"
+                                onClick={() =>
+                                  setOptionsState((prev) => ({
+                                    ...prev,
+                                    [cmd.key]: { ...prev[cmd.key], bulk: num },
+                                  }))
+                                }
+                                className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors border ${
+                                  currentOpts.bulk === num
+                                    ? "bg-sky-600 text-white border-sky-600 shadow-2xs"
+                                    : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                                }`}
+                              >
+                                {num}
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setOptionsState((prev) => ({
+                                  ...prev,
+                                  [cmd.key]: { ...prev[cmd.key], bulk: null },
+                                }))
+                              }
+                              className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors border ${
+                                currentOpts.bulk === null
+                                  ? "bg-sky-600 text-white border-sky-600 shadow-2xs"
+                                  : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                              }`}
+                            >
+                              Semua
+                            </button>
+
+                            <div className="flex items-center gap-1 ml-auto">
+                              <span className="text-[10px] text-slate-400">Custom:</span>
+                              <input
+                                type="number"
+                                min="1"
+                                placeholder="Jml"
+                                value={currentOpts.bulk ?? ""}
+                                onChange={(e) => {
+                                  const val = e.target.value ? parseInt(e.target.value, 10) : null;
+                                  setOptionsState((prev) => ({
+                                    ...prev,
+                                    [cmd.key]: { ...prev[cmd.key], bulk: val },
+                                  }));
+                                }}
+                                className="w-16 px-1.5 py-0.5 text-[11px] font-mono rounded border border-slate-200 focus:outline-none focus:border-sky-500 bg-white"
+                              />
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
                   )}
@@ -481,6 +615,19 @@ export function AdminCommandConsole() {
               </div>
 
               <div className="flex items-center gap-2">
+                {(activeTask.status === "running" || activeTask.status === "queued") && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={cancelingId === activeTask.id}
+                    onClick={() => handleCancelTask(activeTask.id)}
+                    className="h-7 text-xs border-rose-800 bg-rose-950/40 text-rose-300 hover:bg-rose-900 hover:text-white gap-1 px-2.5 transition-colors"
+                  >
+                    <XCircle className="h-3.5 w-3.5 text-rose-400" />
+                    <span>{cancelingId === activeTask.id ? "Membatalkan..." : "Batalkan / Bersihkan"}</span>
+                  </Button>
+                )}
+
                 <Button
                   size="sm"
                   variant="outline"
@@ -585,14 +732,28 @@ export function AdminCommandConsole() {
                         {item.started_at ? new Date(item.started_at).toLocaleString("id-ID") : "-"}
                       </td>
                       <td className="px-3.5 py-2.5 text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => viewHistoryItem(item)}
-                          className="h-6 text-[11px] px-2 border-slate-200 hover:bg-slate-100 text-slate-700"
-                        >
-                          Lihat Log
-                        </Button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {(item.status === "running" || item.status === "queued") && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={cancelingId === item.id}
+                              onClick={() => handleCancelTask(item.id)}
+                              className="h-6 text-[10px] px-2 border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold"
+                              title="Batalkan task yang macet/menggantung"
+                            >
+                              {cancelingId === item.id ? "..." : "Batalkan"}
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => viewHistoryItem(item)}
+                            className="h-6 text-[11px] px-2 border-slate-200 hover:bg-slate-100 text-slate-700"
+                          >
+                            Lihat Log
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}

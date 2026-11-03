@@ -53,6 +53,13 @@ class AdminSystemCommandController extends Controller
             'badge' => 'Gamifikasi',
             'color' => 'purple',
         ],
+        'clear_stale_tasks' => [
+            'name' => 'saptara:clear-stale-tasks',
+            'title' => 'Pembersihan Task & Schedule Cache',
+            'description' => 'Hapus mutex lock schedule artisan yang menggantung (schedule:clear-cache) dan tandai task yang macet sebagai failed.',
+            'badge' => 'Maintenance',
+            'color' => 'rose',
+        ],
     ];
 
     /**
@@ -288,5 +295,87 @@ class AdminSystemCommandController extends Controller
         }
 
         return response()->json($list);
+    }
+
+    /**
+     * POST /api/admin/commands/cancel/{id}
+     * Membatalkan/membersihkan task background yang sedang berjalan secara spesifik.
+     */
+    public function cancel(string $id, Request $request)
+    {
+        $user = $request->user();
+        $execution = null;
+        $now = Carbon::now('Asia/Jakarta');
+
+        try {
+            if (Schema::hasTable('command_executions')) {
+                $execution = CommandExecution::find($id);
+            }
+        } catch (Throwable) {
+            // Fallback
+        }
+
+        $statePath = storage_path("app/command_executions/{$id}.json");
+        $stateData = [];
+        if (File::exists($statePath)) {
+            $stateData = json_decode(File::get($statePath), true) ?: [];
+        }
+
+        if (! $execution && empty($stateData)) {
+            return response()->json([
+                'success' => false,
+                'error' => "Task dengan ID '{$id}' tidak ditemukan.",
+            ], 404);
+        }
+
+        $currentStatus = $execution?->status ?? $stateData['status'] ?? 'unknown';
+        if ($currentStatus === 'completed' || $currentStatus === 'failed') {
+            return response()->json([
+                'success' => true,
+                'message' => "Task sudah dalam status {$currentStatus}.",
+            ]);
+        }
+
+        $commandTitle = $execution?->title ?? $stateData['title'] ?? 'Task';
+        $logPath = $execution?->output_log_path ?? $stateData['output_log_path'] ?? storage_path("logs/tasks/{$id}.log");
+
+        $updatePayload = [
+            'status' => 'failed',
+            'exit_code' => 124,
+            'finished_at' => $now->toDateTimeString(),
+        ];
+
+        if ($execution) {
+            $updatePayload['duration_seconds'] = $execution->started_at ? Carbon::parse($execution->started_at)->diffInSeconds($now) : 0;
+            $execution->update($updatePayload);
+        }
+
+        if (! empty($stateData)) {
+            $taskTime = isset($stateData['started_at']) ? Carbon::parse($stateData['started_at']) : null;
+            $stateData = array_merge($stateData, $updatePayload, [
+                'duration_seconds' => $taskTime ? $taskTime->diffInSeconds($now) : 0,
+            ]);
+            File::put($statePath, json_encode($stateData, JSON_PRETTY_PRINT));
+        }
+
+        if (File::exists($logPath)) {
+            $notice = "\n\n============================================================\n".
+                      "[TASK DIBATALKAN SECARA MANUAL]\n".
+                      "Task dibatalkan oleh Super Admin ({$user?->name}) pada {$now->format('Y-m-d H:i:s')} WIB.\n".
+                      "============================================================\n";
+            File::append($logPath, $notice);
+        }
+
+        Log::warning("PERINGATAN: Super Admin {$user?->name} ({$user?->email}) membatalkan task background '{$id}' ({$commandTitle}) secara MANUAL.", [
+            'execution_id' => $id,
+            'command' => $execution?->command ?? $stateData['command'] ?? '',
+            'canceled_by_id' => $user?->id,
+            'timestamp' => $now->toIso8601String(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Task '{$commandTitle}' berhasil dibatalkan dan status dibersihkan.",
+        ]);
     }
 }
