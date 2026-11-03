@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CommandExecution;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Throwable;
 
 class AdminSystemCommandController extends Controller
@@ -74,7 +78,7 @@ class AdminSystemCommandController extends Controller
 
     /**
      * POST /api/admin/commands/run
-     * Menjalankan perintah console secara manual oleh Super Admin.
+     * Meluncurkan proses console command di latar belakang (asynchronous) untuk mencegah Cloudflare 524 Timeout.
      */
     public function run(Request $request)
     {
@@ -94,9 +98,12 @@ class AdminSystemCommandController extends Controller
         $commandMeta = $this->allowedCommands[$key];
         $commandSignature = $commandMeta['name'];
         $user = $request->user();
+        $id = (string) Str::uuid();
+        $options = $request->input('options', []);
 
-        // ⚠️ LOG WARNING: Dipicu sebagai penanda bahwa command console dieksekusi secara manual
-        Log::warning("PERINGATAN: Command console '{$commandSignature}' dijalankan secara MANUAL oleh Super Admin!", [
+        // ⚠️ LOG WARNING: Dipicu sebagai penanda bahwa command console dieksekusi secara manual oleh Super Admin
+        Log::warning("PERINGATAN: Command console '{$commandSignature}' dijalankan secara MANUAL oleh Super Admin di background!", [
+            'execution_id' => $id,
             'command_key' => $key,
             'signature' => $commandSignature,
             'title' => $commandMeta['title'],
@@ -106,45 +113,180 @@ class AdminSystemCommandController extends Controller
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
             'timestamp' => now('Asia/Jakarta')->toIso8601String(),
-            'input_options' => $request->input('options', []),
+            'options' => $options,
         ]);
 
+        $logDir = storage_path('logs/tasks');
+        $stateDir = storage_path('app/command_executions');
+        if (! File::exists($logDir)) {
+            File::makeDirectory($logDir, 0755, true, true);
+        }
+        if (! File::exists($stateDir)) {
+            File::makeDirectory($stateDir, 0755, true, true);
+        }
+
+        $logPath = $logDir.'/'.$id.'.log';
+        $statePath = $stateDir.'/'.$id.'.json';
+
+        $initialState = [
+            'id' => $id,
+            'command_key' => $key,
+            'command' => $commandSignature,
+            'title' => $commandMeta['title'],
+            'status' => 'queued',
+            'exit_code' => null,
+            'output_log_path' => $logPath,
+            'options' => $options,
+            'executed_by_id' => $user?->id,
+            'executed_by_name' => $user?->name,
+            'executed_by_email' => $user?->email,
+            'ip_address' => $request->ip(),
+            'started_at' => Carbon::now('Asia/Jakarta')->toDateTimeString(),
+            'finished_at' => null,
+            'duration_seconds' => null,
+            'created_at' => Carbon::now('Asia/Jakarta')->toDateTimeString(),
+        ];
+
+        // 1. Simpan ke database jika tabel sudah siap
         try {
-            $params = [];
-            $requestedOptions = $request->input('options', []);
-
-            if (! empty($requestedOptions['dry_run'])) {
-                $params['--dry-run'] = true;
+            if (Schema::hasTable('command_executions')) {
+                CommandExecution::create($initialState);
             }
-            if (! empty($requestedOptions['recalculate'])) {
-                $params['--recalculate'] = true;
-            }
-            if (! empty($requestedOptions['limit'])) {
-                $params['--limit'] = (int) $requestedOptions['limit'];
-            }
-
-            // Eksekusi Artisan Command
-            $exitCode = Artisan::call($commandSignature, $params);
-            $output = Artisan::output();
-
-            return response()->json([
-                'success' => $exitCode === 0,
-                'command' => $commandSignature,
-                'title' => $commandMeta['title'],
-                'exit_code' => $exitCode,
-                'output' => $output ?: '(Perintah selesai tanpa pesan terminal)',
-                'executed_at' => now('Asia/Jakarta')->format('Y-m-d H:i:s'),
-                'message' => "Command '{$commandMeta['title']}' berhasil dieksekusi secara manual.",
-            ]);
         } catch (Throwable $e) {
-            Log::error("Gagal mengeksekusi manual command '{$commandSignature}': ".$e->getMessage(), [
-                'exception' => $e->getTraceAsString(),
-            ]);
+            Log::debug('Gagal menyimpan command execution ke DB, menggunakan file fallback: '.$e->getMessage());
+        }
 
+        // 2. Simpan ke file JSON sebagai fallback pasti (zero dependency)
+        File::put($statePath, json_encode($initialState, JSON_PRETTY_PRINT));
+        File::put($logPath, "Menunggu antrean eksekusi background...\n");
+
+        // 3. Jalankan detached PHP CLI process di latar belakang
+        $phpBinary = PHP_BINARY && file_exists(PHP_BINARY) ? PHP_BINARY : '/usr/bin/php';
+        $artisanPath = base_path('artisan');
+
+        $commandToRun = sprintf(
+            '%s %s saptara:execute-task %s > /dev/null 2>&1 &',
+            escapeshellarg($phpBinary),
+            escapeshellarg($artisanPath),
+            escapeshellarg($id)
+        );
+
+        if (function_exists('exec')) {
+            @exec($commandToRun);
+        } else {
+            $process = proc_open($commandToRun, [], $pipes);
+            if (is_resource($process)) {
+                proc_close($process);
+            }
+        }
+
+        // 4. Langsung kembalikan respons 202 Accepted dalam < 50ms ke Cloudflare
+        return response()->json([
+            'success' => true,
+            'execution_id' => $id,
+            'status' => 'running',
+            'command' => $commandSignature,
+            'title' => $commandMeta['title'],
+            'message' => "Command '{$commandMeta['title']}' telah diluncurkan di background.",
+        ], 202);
+    }
+
+    /**
+     * GET /api/admin/commands/status/{id}
+     * Memeriksa status eksekusi dan mengambil potongan log terbaru.
+     */
+    public function status(string $id)
+    {
+        $execution = null;
+        $hasDbTable = false;
+
+        try {
+            if (Schema::hasTable('command_executions')) {
+                $hasDbTable = true;
+                $execution = CommandExecution::find($id);
+            }
+        } catch (Throwable) {
+            $hasDbTable = false;
+        }
+
+        $statePath = storage_path("app/command_executions/{$id}.json");
+        $stateData = [];
+        if (File::exists($statePath)) {
+            $stateData = json_decode(File::get($statePath), true) ?: [];
+        }
+
+        if (! $execution && empty($stateData)) {
             return response()->json([
                 'success' => false,
-                'error' => 'Gagal mengeksekusi command: '.$e->getMessage(),
-            ], 500);
+                'error' => "Task dengan ID '{$id}' tidak ditemukan.",
+            ], 404);
         }
+
+        $logPath = $execution?->output_log_path ?? $stateData['output_log_path'] ?? storage_path("logs/tasks/{$id}.log");
+        $output = '';
+        if (File::exists($logPath)) {
+            $output = File::get($logPath);
+        }
+
+        $status = $execution?->status ?? $stateData['status'] ?? 'unknown';
+        $startedAtStr = $execution?->started_at ?? $stateData['started_at'] ?? null;
+        $finishedAtStr = $execution?->finished_at ?? $stateData['finished_at'] ?? null;
+        $exitCode = $execution?->exit_code ?? $stateData['exit_code'] ?? null;
+        $durationSeconds = $execution?->duration_seconds ?? $stateData['duration_seconds'] ?? null;
+
+        // Hitung durasi live jika masih berjalan
+        if ($status === 'running' && $startedAtStr) {
+            $startedAt = Carbon::parse($startedAtStr);
+            $durationSeconds = $startedAt->diffInSeconds(Carbon::now('Asia/Jakarta'));
+        }
+
+        return response()->json([
+            'success' => true,
+            'id' => $id,
+            'command' => $execution?->command ?? $stateData['command'] ?? '',
+            'title' => $execution?->title ?? $stateData['title'] ?? 'Task',
+            'status' => $status,
+            'exit_code' => $exitCode,
+            'output' => $output,
+            'started_at' => $startedAtStr,
+            'finished_at' => $finishedAtStr,
+            'duration_seconds' => $durationSeconds,
+        ]);
+    }
+
+    /**
+     * GET /api/admin/commands/history
+     * Mengambil daftar riwayat 15 eksekusi terakhir.
+     */
+    public function history()
+    {
+        $list = [];
+
+        try {
+            if (Schema::hasTable('command_executions')) {
+                return response()->json(
+                    CommandExecution::latest()->limit(15)->get()
+                );
+            }
+        } catch (Throwable) {
+            // Fallback ke pembacaan file
+        }
+
+        $stateDir = storage_path('app/command_executions');
+        if (File::exists($stateDir)) {
+            $files = File::files($stateDir);
+            // Urutkan file berdasarkan waktu modifikasi terbaru
+            usort($files, fn ($a, $b) => $b->getMTime() - $a->getMTime());
+            $files = array_slice($files, 0, 15);
+
+            foreach ($files as $file) {
+                $data = json_decode(File::get($file->getPathname()), true);
+                if ($data) {
+                    $list[] = $data;
+                }
+            }
+        }
+
+        return response()->json($list);
     }
 }

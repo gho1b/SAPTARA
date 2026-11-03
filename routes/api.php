@@ -137,6 +137,8 @@ Route::middleware(['auth:sanctum', 'auth.admin'])->prefix('admin')->group(functi
     Route::post('/schools/{id}/admin-account', [AdminSchoolController::class, 'saveSchoolAdminAccount']);
     Route::get('/commands', [AdminSystemCommandController::class, 'index']);
     Route::post('/commands/run', [AdminSystemCommandController::class, 'run']);
+    Route::get('/commands/status/{id}', [AdminSystemCommandController::class, 'status']);
+    Route::get('/commands/history', [AdminSystemCommandController::class, 'history']);
 });
 
 // ── School Admin Routes ────────────────────────────────────────

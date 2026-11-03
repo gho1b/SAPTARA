@@ -48,7 +48,7 @@ class AdminSystemCommandTest extends TestCase
         $response->assertJsonFragment(['key' => 'sync_streaks']);
     }
 
-    public function test_super_admin_executing_command_triggers_log_warning_and_returns_output(): void
+    public function test_super_admin_executing_command_triggers_log_warning_and_launches_background_task(): void
     {
         Log::shouldReceive('warning')
             ->once()
@@ -60,6 +60,7 @@ class AdminSystemCommandTest extends TestCase
 
         // Allow any other logs
         Log::shouldReceive('info')->zeroOrMoreTimes();
+        Log::shouldReceive('debug')->zeroOrMoreTimes();
         Log::shouldReceive('error')->zeroOrMoreTimes();
 
         $response = $this->withHeader('Authorization', 'Bearer '.$this->adminToken)
@@ -68,13 +69,29 @@ class AdminSystemCommandTest extends TestCase
                 'options' => ['recalculate' => false],
             ]);
 
-        $response->assertOk();
+        // Harus mengembalikan 202 Accepted dalam milidetik (bebas Cloudflare 524 timeout)
+        $response->assertStatus(202);
         $response->assertJson([
             'success' => true,
             'command' => 'saptara:sync-streaks',
-            'exit_code' => 0,
+            'status' => 'running',
         ]);
-        $this->assertNotEmpty($response->json('output'));
+        $this->assertNotEmpty($response->json('execution_id'));
+
+        $executionId = $response->json('execution_id');
+
+        // Uji endpoint status
+        $statusResponse = $this->withHeader('Authorization', 'Bearer '.$this->adminToken)
+            ->getJson('/api/admin/commands/status/'.$executionId);
+
+        $statusResponse->assertOk();
+        $statusResponse->assertJsonFragment(['id' => $executionId]);
+
+        // Uji endpoint history
+        $historyResponse = $this->withHeader('Authorization', 'Bearer '.$this->adminToken)
+            ->getJson('/api/admin/commands/history');
+
+        $historyResponse->assertOk();
     }
 
     public function test_disallowed_command_is_rejected(): void

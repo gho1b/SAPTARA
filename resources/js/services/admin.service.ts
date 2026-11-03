@@ -133,11 +133,19 @@ export const adminService = {
     return apiFetch<SystemCommandMeta[]>("/api/admin/commands");
   },
 
-  async runCommand(command: string, options?: Record<string, any>): Promise<CommandExecutionResult> {
-    return apiFetch<CommandExecutionResult>("/api/admin/commands/run", {
+  async runCommand(command: string, options?: Record<string, any>): Promise<CommandDispatchResult> {
+    return apiFetch<CommandDispatchResult>("/api/admin/commands/run", {
       method: "POST",
       body: JSON.stringify({ command, options }),
     });
+  },
+
+  async getCommandStatus(id: string): Promise<CommandExecutionStatus> {
+    return apiFetch<CommandExecutionStatus>(`/api/admin/commands/status/${id}`);
+  },
+
+  async getCommandHistory(): Promise<CommandExecutionStatus[]> {
+    return apiFetch<CommandExecutionStatus[]>("/api/admin/commands/history");
   },
 };
 
@@ -150,14 +158,26 @@ export interface SystemCommandMeta {
   color: string;
 }
 
-export interface CommandExecutionResult {
+export interface CommandDispatchResult {
   success: boolean;
+  execution_id: string;
+  status: "queued" | "running";
   command: string;
   title: string;
-  exit_code: number;
-  output: string;
-  executed_at: string;
   message: string;
   error?: string;
+}
+
+export interface CommandExecutionStatus {
+  id: string;
+  command: string;
+  title: string;
+  status: "queued" | "running" | "completed" | "failed";
+  exit_code: number | null;
+  output: string;
+  started_at: string | null;
+  finished_at: string | null;
+  duration_seconds: number | null;
+  executed_by_name?: string | null;
 }
 
