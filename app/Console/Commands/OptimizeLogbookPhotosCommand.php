@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\LogbookEntry;
 use App\Services\LogbookImageService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class OptimizeLogbookPhotosCommand extends Command
@@ -34,6 +35,14 @@ class OptimizeLogbookPhotosCommand extends Command
         $totalFiles = count($allFiles);
         $this->info("Ditemukan <comment>{$totalFiles}</comment> file di direktori '{$directory}'.");
 
+        Log::info('Command logbook:optimize-photos dimulai', [
+            'disk' => $diskName,
+            'directory' => $directory,
+            'dry_run' => $isDryRun,
+            'total_files' => $totalFiles,
+            'limit' => $limit,
+        ]);
+
         if ($limit !== null && $limit > 0) {
             $this->line("Membatasi pemrosesan ke <comment>{$limit}</comment> file teratas.");
             $allFiles = array_slice($allFiles, 0, $limit);
@@ -57,6 +66,7 @@ class OptimizeLogbookPhotosCommand extends Command
             // Jika sudah sesuai spesifikasi, file TIDAK BOLEH disentuh sama sekali!
             if ($imageService->isStandardSpecification($fullPath)) {
                 $skippedStandardCount++;
+                Log::info("Foto logbook dilewati karena sudah memenuhi standar 960x1280 JPEG: {$filename}");
                 $bar->advance();
 
                 continue;
@@ -67,9 +77,15 @@ class OptimizeLogbookPhotosCommand extends Command
             // 2. JIKA DRY RUN, CUKUP CATAT TANPA MENIMPA FILE
             if ($isDryRun) {
                 $optimizedCount++;
-                // Estimasi rata-rata ukuran standar 960x1280 kualitas 88 adalah ~100 KB
                 $estimatedNewSize = min($origSize, 102400);
-                $freedBytes += max(0, $origSize - $estimatedNewSize);
+                $estimatedSaved = max(0, $origSize - $estimatedNewSize);
+                $freedBytes += $estimatedSaved;
+
+                Log::info("DRY-RUN foto logbook perlu optimasi: {$filename}", [
+                    'orig_bytes' => $origSize,
+                    'estimated_freed_bytes' => $estimatedSaved,
+                ]);
+
                 $bar->advance();
 
                 continue;
@@ -81,6 +97,10 @@ class OptimizeLogbookPhotosCommand extends Command
             if ($newImageData === null) {
                 $failedCount++;
                 $this->error("\n[Gagal Decode] Format tidak didukung / file corrupt: {$filename}");
+                Log::error("Gagal melakukan decode atau resize pada foto logbook: {$filename}", [
+                    'path' => $relativePath,
+                    'orig_size_bytes' => $origSize,
+                ]);
                 $bar->advance();
 
                 continue;
@@ -114,6 +134,13 @@ class OptimizeLogbookPhotosCommand extends Command
             $freedBytes += $saved;
             $optimizedCount++;
 
+            Log::info("Foto logbook berhasil di-resize dan ditimpa ke standar 960x1280: {$filename}", [
+                'orig_bytes' => $origSize,
+                'new_bytes' => $newSize,
+                'freed_bytes' => $saved,
+                'saved_percentage' => $origSize > 0 ? round(($saved / $origSize) * 100, 1).'%' : '0%',
+            ]);
+
             $bar->advance();
         }
 
@@ -127,6 +154,15 @@ class OptimizeLogbookPhotosCommand extends Command
         $this->info('Gagal / format unsupported : '.($failedCount > 0 ? "<error>{$failedCount}</error>" : '<info>0</info>').' file');
         $this->info('Estimasi Disk Space Dihemat: <info>'.$this->formatBytes($freedBytes).'</info>');
         $this->info('=========================================================');
+
+        Log::info('Command logbook:optimize-photos selesai', [
+            'total_checked' => $processedCount,
+            'already_standard' => $skippedStandardCount,
+            'optimized' => $optimizedCount,
+            'failed' => $failedCount,
+            'total_freed_bytes' => $freedBytes,
+            'total_freed_formatted' => $this->formatBytes($freedBytes),
+        ]);
 
         return self::SUCCESS;
     }

@@ -176,6 +176,11 @@ class LogbookController extends Controller
 
         $disk->put($destinationRelative, $imageData, 'public');
 
+        Log::info("Foto logbook baru berhasil di-resize ke 960x1280 dan disimpan: {$destinationRelative}", [
+            'disk' => $diskName,
+            'size_bytes' => strlen($imageData),
+        ]);
+
         return $disk->url($destinationRelative);
     }
 

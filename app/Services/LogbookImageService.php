@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Log;
 use Imagick;
 use Throwable;
 
@@ -33,9 +34,19 @@ class LogbookImageService
         [$width, $height] = $info;
         $mime = $info['mime'] ?? '';
 
-        return $width === self::TARGET_WIDTH
+        $isStandard = $width === self::TARGET_WIDTH
             && $height === self::TARGET_HEIGHT
             && $mime === 'image/jpeg';
+
+        if ($isStandard) {
+            Log::debug('Logbook foto sudah sesuai spesifikasi standar (960x1280 JPEG), dibiarkan utuh.', [
+                'file' => basename($filePath),
+                'dimensions' => "{$width}x{$height}",
+                'mime' => $mime,
+            ]);
+        }
+
+        return $isStandard;
     }
 
     /**
@@ -48,8 +59,12 @@ class LogbookImageService
     public function processToStandard(string $filePath): ?string
     {
         if (! file_exists($filePath)) {
+            Log::warning("File foto logbook tidak ditemukan untuk di-resize: {$filePath}");
+
             return null;
         }
+
+        Log::info("Memulai proses resize foto logbook ke standar 960x1280: {$filePath}");
 
         // Coba gunakan Imagick terlebih dahulu jika ekstensi aktif
         if (class_exists(Imagick::class)) {
@@ -63,6 +78,8 @@ class LogbookImageService
         if (extension_loaded('gd')) {
             return $this->processWithGd($filePath);
         }
+
+        Log::error("Tidak ada driver gambar (Imagick/GD) yang berhasil memproses: {$filePath}");
 
         return null;
     }
@@ -114,8 +131,16 @@ class LogbookImageService
             $blob = $im->getImageBlob();
             $im->clear();
 
+            Log::info("Resize berhasil dengan Imagick ke 960x1280 JPEG: {$filePath}", [
+                'orig_dimensions' => "{$origW}x{$origH}",
+                'target_dimensions' => self::TARGET_WIDTH.'x'.self::TARGET_HEIGHT,
+                'output_bytes' => strlen($blob),
+            ]);
+
             return $blob;
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            Log::warning("Imagick gagal memproses gambar {$filePath}: ".$e->getMessage());
+
             return null;
         }
     }
@@ -205,8 +230,18 @@ class LogbookImageService
             $imageData = ob_get_clean();
             imagedestroy($canvas);
 
+            if ($imageData) {
+                Log::info("Resize berhasil dengan GD ke 960x1280 JPEG: {$filePath}", [
+                    'orig_dimensions' => "{$origW}x{$origH}",
+                    'target_dimensions' => self::TARGET_WIDTH.'x'.self::TARGET_HEIGHT,
+                    'output_bytes' => strlen($imageData),
+                ]);
+            }
+
             return $imageData ?: null;
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            Log::warning("GD gagal memproses gambar {$filePath}: ".$e->getMessage());
+
             return null;
         }
     }
